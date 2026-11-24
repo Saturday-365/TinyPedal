@@ -49,7 +49,7 @@ class About(BaseDialog):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.setWindowTitle(f"About {APP.TINYPEDAL}")
+        self.setWindowTitle(self.tr("About {app}").format(app=APP.TINYPEDAL))
 
         # Tab
         main_tab = self.add_tabs()
@@ -76,10 +76,10 @@ class About(BaseDialog):
         lics_tab = self.new_text_tab(self.load_text_files(FILE.DOC_LICENSE))
         tpan_tab = self.new_text_tab(self.load_text_files(FILE.DOC_THIRDPARTYNOTICES))
         main_tab = QTabWidget(self)
-        main_tab.addTab(info_tab, "About")
-        main_tab.addTab(ctrb_tab, "Contributors")
-        main_tab.addTab(lics_tab, "License")
-        main_tab.addTab(tpan_tab, "Third-Party Notices")
+        main_tab.addTab(info_tab, self.tr("About"))
+        main_tab.addTab(ctrb_tab, self.tr("Contributors"))
+        main_tab.addTab(lics_tab, self.tr("License"))
+        main_tab.addTab(tpan_tab, self.tr("Third-Party Notices"))
         return main_tab
 
     @staticmethod
@@ -117,7 +117,7 @@ class About(BaseDialog):
         label_name.setObjectName("labelAppName")
         label_name.setAlignment(Qt.AlignCenter)
 
-        label_version = QLabel(f"Version {APP.VERSION}")
+        label_version = QLabel(self.tr("Version {version}").format(version=APP.VERSION))
         label_version.setAlignment(Qt.AlignCenter)
 
         label_desc = QLabel(

@@ -320,7 +320,7 @@ def _init_app():
     logger.info("STARTING............")
     # Init core GUI
     from . import ui
-    ui.init(cfg.application["enable_high_dpi_scaling"])
+    ui.init(cfg.application["enable_high_dpi_scaling"], cfg.application["ui_language"])
 
     # Load user preset
     cfg.set_next_to_load()

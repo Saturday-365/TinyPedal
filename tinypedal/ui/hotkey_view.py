@@ -70,7 +70,7 @@ class HotkeyList(QWidget):
         self.create_list()
 
         # Button
-        self.button_reset = QPushButton("Clear All")
+        self.button_reset = QPushButton(self.tr("Clear All"))
         self.button_reset.clicked.connect(self.reset_hotkey)
 
         self.button_toggle = QPushButton("")
@@ -122,7 +122,7 @@ class HotkeyList(QWidget):
     def set_enable_state(self, enabled: bool):
         """Set enable state"""
         self.button_toggle.setChecked(enabled)
-        self.button_toggle.setText("Enabled" if enabled else "Disabled")
+        self.button_toggle.setText(self.tr("Enabled") if enabled else self.tr("Disabled"))
         self.button_reset.setDisabled(not enabled)
         self.listbox_hotkey.setDisabled(not enabled)
 
@@ -269,7 +269,7 @@ class ConfigHotkey(BaseDialog):
             layout_main.addWidget(self.preset_selector)
 
         # Button
-        button_clear = QPushButton("Clear")
+        button_clear = QPushButton(self.tr("Clear"))
         button_clear.clicked.connect(self.reset)
 
         button_confirm = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)

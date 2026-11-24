@@ -27,7 +27,7 @@ from typing import Any, Mapping
 
 from .. import regex_pattern as rxp
 from .. import version
-from ..constant import DATA
+from ..constant import APP, DATA
 from ..hotkey.common import validate_hotkey
 from ..validator import is_clock_format, is_hex_color
 from ..version_check import parse_version_string
@@ -280,7 +280,12 @@ class PresetValidator:
         if preset_version == DATA.VERSION_NA or preset_version < build_version:
             preupdate_global_setting(preset_version, dict_user)
         # Validate preset
-        return cls._validate(dict_user, dict_def)
+        dict_user = cls._validate(dict_user, dict_def)
+        application = dict_user["application"]
+        language = application["ui_language"]
+        if not isinstance(language, str) or language not in APP.LANGUAGES:
+            application["ui_language"] = APP.DEFAULT_LANGUAGE
+        return dict_user
 
     @classmethod
     def user_preset(cls, dict_user: dict, dict_def: dict) -> dict:

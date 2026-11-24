@@ -95,6 +95,7 @@ CFG_STRING = (
     "^connection_password$|"
     "^preset$|"
     "^process_id$|"
+    "^ui_language$|"
     "^version$|"
     # Partial match
     "file_name|"

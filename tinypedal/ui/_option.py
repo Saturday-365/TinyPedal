@@ -26,7 +26,7 @@ import os
 from collections import deque
 from typing import Any, ClassVar
 
-from PySide2.QtCore import QPoint, Qt
+from PySide2.QtCore import QCoreApplication, QPoint, Qt
 from PySide2.QtGui import QColor, qGray
 from PySide2.QtWidgets import (
     QCheckBox,
@@ -76,7 +76,7 @@ class BaseLineEdit(QLineEdit):
         """Context menu for reset option to default value"""
         if self._default is not None:
             menu = QMenu()  # no parent for temp menu
-            option_reset = menu.addAction("Reset to Default")
+            option_reset = menu.addAction(QCoreApplication.translate("OptionEditor", "Reset to Default"))
             action = menu.exec_(self.mapToGlobal(position))
             if action == option_reset:
                 self.reset_to_default()
@@ -109,7 +109,7 @@ class BaseCheckBox(QCheckBox):
         """Context menu for reset option to default value"""
         if self._default is not None:
             menu = QMenu()  # no parent for temp menu
-            option_reset = menu.addAction("Reset to Default")
+            option_reset = menu.addAction(QCoreApplication.translate("OptionEditor", "Reset to Default"))
             action = menu.exec_(self.mapToGlobal(position))
             if action == option_reset:
                 self.reset_to_default()
@@ -142,7 +142,7 @@ class BaseComboBox(QComboBox):
         """Context menu for reset option to default value"""
         if self._default is not None:
             menu = QMenu()  # no parent for temp menu
-            option_reset = menu.addAction("Reset to Default")
+            option_reset = menu.addAction(QCoreApplication.translate("OptionEditor", "Reset to Default"))
             action = menu.exec_(self.mapToGlobal(position))
             if action == option_reset:
                 self.reset_to_default()
@@ -207,6 +207,18 @@ class DropDownListEdit(BaseComboBox):
     def validate(self):
         """Validate & export value, returns None if invalid"""
         return self.currentText()
+
+
+class LanguageEdit(BaseComboBox):
+    """Language selector that saves the locale code."""
+
+    def validate(self):
+        """Return the language code instead of the item label."""
+        return self.currentData()
+
+    def reset_to_default(self):
+        """Restore the default language by code."""
+        self.setCurrentIndex(self.findData(self.default()))
 
 
 class ColorEdit(BaseLineEdit):

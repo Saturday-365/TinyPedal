@@ -29,6 +29,7 @@ from PySide2.QtGui import QFont, QGuiApplication, QIcon, QPixmapCache
 from PySide2.QtWidgets import QApplication, QMessageBox
 
 from ..constant import APP, FILE, PLATFORM
+from .i18n import install_translations
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ def set_app_font(root: QApplication):
     root.setFont(font)
 
 
-def init(high_dpi: bool) -> QApplication:
+def init(high_dpi: bool, language: str = APP.DEFAULT_LANGUAGE) -> QApplication:
     """Initialize APP core GUI"""
     if QApplication.instance():
         raise RuntimeError("core GUI already initialized")
@@ -81,6 +82,7 @@ def init(high_dpi: bool) -> QApplication:
     root = QApplication(sys.argv)
     root.setQuitOnLastWindowClosed(False)
     root.setApplicationName(APP.TINYPEDAL)
+    install_translations(root, language)
     set_app_icon(root)
     set_app_font(root)
     # Disable global pixmap cache

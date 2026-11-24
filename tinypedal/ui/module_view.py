@@ -33,10 +33,11 @@ from PySide2.QtWidgets import (
 )
 
 from .. import app_signal, cfg
-from ..formatter import format_module_name
+from ..constant import CONFIG
 from ..module_control import ModuleControl
 from ._common import UIScaler
 from .config import UserConfig
+from .i18n import module_label
 
 
 class ModuleList(QWidget):
@@ -60,10 +61,10 @@ class ModuleList(QWidget):
         self.create_list()
 
         # Button
-        button_enable = QPushButton("Enable All")
+        button_enable = QPushButton(self.tr("Enable All"))
         button_enable.clicked.connect(self.module_button_enable_all)
 
-        button_disable = QPushButton("Disable All")
+        button_disable = QPushButton(self.tr("Disable All"))
         button_disable.clicked.connect(self.module_button_disable_all)
 
         layout_button = QHBoxLayout()
@@ -85,7 +86,7 @@ class ModuleList(QWidget):
         for _name in self.module_control.names:
             module_item = ModuleControlItem(self, _name, self.module_control)
             item = QListWidgetItem()
-            item.setText(format_module_name(_name))
+            item.setText(module_label(_name))
             self.listbox_module.addItem(item)
             self.listbox_module.setItemWidget(item, module_item)
         self.listbox_module.setCurrentRow(0)
@@ -101,31 +102,35 @@ class ModuleList(QWidget):
     def refresh_label(self):
         """Refresh label text"""
         self.label_loaded.setText(
-            f"Enabled: <b>{self.module_control.number_active}/"
-            f"{self.module_control.number_total}</b>"
+            self.tr("Enabled: <b>{active}/{total}</b>").format(
+                active=self.module_control.number_active, total=self.module_control.number_total,
+            )
         )
 
     def module_button_enable_all(self):
         """Enable all modules"""
         if self.module_control.number_active != self.module_control.number_total:
-            if self.confirm_batch_toggle("Enable"):
+            if self.confirm_batch_toggle(True):
                 self.module_control.enable_all()
                 app_signal.refresh.emit(True)
 
     def module_button_disable_all(self):
         """Disable all modules"""
         if self.module_control.number_active:
-            if self.confirm_batch_toggle("Disable"):
+            if self.confirm_batch_toggle(False):
                 self.module_control.disable_all()
                 app_signal.refresh.emit(True)
 
-    def confirm_batch_toggle(self, confirm_type: str) -> bool:
+    def confirm_batch_toggle(self, enable: bool) -> bool:
         """Batch toggle confirmation"""
         if not cfg.application["show_confirmation_for_batch_toggle"]:
             return True
-        msg_text = f"<b>{confirm_type}</b> all {self.module_control.type_id}s?"
+        if self.module_control.type_id == CONFIG.TYPE_WIDGET:
+            msg_text = self.tr("<b>Enable</b> all widgets?") if enable else self.tr("<b>Disable</b> all widgets?")
+        else:
+            msg_text = self.tr("<b>Enable</b> all modules?") if enable else self.tr("<b>Disable</b> all modules?")
         confirm_msg = QMessageBox.question(
-            self, "Confirm", msg_text,
+            self, self.tr("Confirm"), msg_text,
             buttons=QMessageBox.Yes | QMessageBox.No,
             defaultButton=QMessageBox.No,
         )
@@ -154,7 +159,7 @@ class ModuleControlItem(QWidget):
         # Use "clicked" to avoid trigger with "setChecked"
         self.button_toggle.clicked.connect(self.toggle_state)
 
-        button_config = QPushButton("Config")
+        button_config = QPushButton(self.tr("Config"))
         button_config.setObjectName("buttonConfig")
         button_config.pressed.connect(self.open_config_dialog)
 
@@ -182,7 +187,7 @@ class ModuleControlItem(QWidget):
 
     def update_button_text(self):
         """Update button text"""
-        self.button_toggle.setText("ON" if self.is_enabled() else "OFF")
+        self.button_toggle.setText(self.tr("ON") if self.is_enabled() else self.tr("OFF"))
         self._parent.refresh_label()
 
     def open_config_dialog(self):

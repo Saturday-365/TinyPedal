@@ -28,7 +28,7 @@ import time
 from itertools import islice, zip_longest
 from typing import Callable, Mapping, Sequence
 
-from PySide2.QtCore import Qt
+from PySide2.QtCore import QCoreApplication, Qt
 from PySide2.QtGui import QFontDatabase
 from PySide2.QtWidgets import (
     QCompleter,
@@ -47,7 +47,7 @@ from PySide2.QtWidgets import (
 
 from .. import cfg
 from .. import regex_pattern as rxp
-from ..constant import CONFIG
+from ..constant import APP, CONFIG
 from ..formatter import format_option_name
 from ._common import (
     QVAL_COLOR,
@@ -67,10 +67,12 @@ from ._option import (
     FloatEdit,
     ImagePathEdit,
     IntegerEdit,
+    LanguageEdit,
     OptionGroup,
     StringEdit,
 )
 from .display_order import DisplayOrder
+from .i18n import module_label, option_label
 
 COLUMN_LABEL = 0  # grid layout column index
 COLUMN_OPTION = 1
@@ -119,15 +121,15 @@ class FontConfig(BaseDialog):
 
         layout_option = QGridLayout()
         layout_option.setAlignment(Qt.AlignTop)
-        layout_option.addWidget(QLabel("Font Name"), 0, 0)
+        layout_option.addWidget(QLabel(self.tr("Font Name")), 0, 0)
         layout_option.addWidget(self.edit_fontname, 0, 1)
-        layout_option.addWidget(QLabel("Font Size Addend"), 1, 0)
+        layout_option.addWidget(QLabel(self.tr("Font Size Addend")), 1, 0)
         layout_option.addWidget(self.edit_fontsize, 1, 1)
-        layout_option.addWidget(QLabel("Font Weight"), 2, 0)
+        layout_option.addWidget(QLabel(self.tr("Font Weight")), 2, 0)
         layout_option.addWidget(self.edit_fontweight, 2, 1)
-        layout_option.addWidget(QLabel("Enable Auto Font Offset"), 3, 0)
+        layout_option.addWidget(QLabel(self.tr("Enable Auto Font Offset")), 3, 0)
         layout_option.addWidget(self.edit_autooffset, 3, 1)
-        layout_option.addWidget(QLabel("Font Offset Vertical Addend"), 4, 0)
+        layout_option.addWidget(QLabel(self.tr("Font Offset Vertical Addend")), 4, 0)
         layout_option.addWidget(self.edit_fontoffset, 4, 1)
 
         # Button
@@ -237,7 +239,9 @@ class UserConfig(BaseDialog):
             fixed_column: whether option column width is fixed, default True.
         """
         super().__init__(parent)
-        self.set_config_title(format_option_name(key_name), set_preset_name(preset_name, config_type))
+        label = module_label if config_type in (CONFIG.TYPE_MODULE, CONFIG.TYPE_WIDGET) else option_label
+        self.category_name = label(key_name)
+        self.set_config_title(self.category_name, set_preset_name(preset_name, config_type))
 
         self.reloading = reload_func
         self.key_name = key_name
@@ -268,11 +272,11 @@ class UserConfig(BaseDialog):
         auto_complete_search.setCaseSensitivity(Qt.CaseInsensitive)
 
         edit_search = QLineEdit(self)
-        edit_search.setPlaceholderText(" Type here to search options")
+        edit_search.setPlaceholderText(self.tr(" Type here to search options"))
         edit_search.setCompleter(auto_complete_search)
         edit_search.textChanged.connect(self.search_options)
 
-        button_clearsearch = CompactButton("Clear")
+        button_clearsearch = CompactButton(self.tr("Clear"))
         button_clearsearch.clicked.connect(edit_search.clear)
         button_clearsearch.setFocusPolicy(Qt.NoFocus)
 
@@ -283,7 +287,7 @@ class UserConfig(BaseDialog):
         # Button
         has_display_order = (config_type == CONFIG.TYPE_WIDGET and self.has_display_order())
         if has_display_order:
-            button_display_order = QPushButton("Configure Display Order")
+            button_display_order = QPushButton(self.tr("Configure Display Order"))
             button_display_order.clicked.connect(self.open_display_order)
 
         button_reset = QDialogButtonBox(QDialogButtonBox.Reset)
@@ -333,12 +337,13 @@ class UserConfig(BaseDialog):
 
     def search_options(self, text: str):
         """Search for options"""
-        text = text.strip().lower()
+        text = text.strip().casefold()
         layout_option = self.layout_option
         for row_index in range(layout_option.rowCount()):
             label = layout_option.itemAtPosition(row_index, 0).widget()
             option = layout_option.itemAtPosition(row_index, 1).widget()
-            hidden = text not in label.text().lower()
+            aliases = label.property("searchAliases")
+            hidden = text not in label.text().casefold() and text not in aliases
             label.setHidden(hidden)
             option.setHidden(hidden)
 
@@ -359,35 +364,36 @@ class UserConfig(BaseDialog):
 
     def applying(self):
         """Save & apply"""
-        self.save_setting()
-        if not self.config_type:
+        if self.save_setting() and not self.config_type:
             self.accept()
 
     def saving(self):
         """Save & close"""
-        self.save_setting()
-        self.accept()
+        if self.save_setting():
+            self.accept()
 
     def reset_setting(self):
         """Reset setting"""
-        msg_text = (
-            f"Reset all <b>{format_option_name(self.key_name)}</b> options to default?<br><br>"
+        msg_text = self.tr(
+            "Reset all <b>{category}</b> options to default?<br><br>"
             "Changes are only saved after clicking Apply or Save Button."
-        )
-        if self.confirm_operation(title="Reset Options", message=msg_text):
+        ).format(category=self.category_name)
+        if self.confirm_operation(title=self.tr("Reset Options"), message=msg_text):
             for key, editor in self.option_edit.items():
                 if key != "enable":
                     editor.reset_to_default()
 
-    def save_setting(self):
+    def save_setting(self) -> bool:
         """Save setting"""
-        user_setting = self.user_setting[self.key_name]
+        # 所有字段验证通过后再写入，包括需要重启才生效的语言设置。
+        validated = {}
         for key, editor in self.option_edit.items():
             value = editor.validate()
             if value is None:  # abort if error found
                 self.value_error_message(key)
-                return
-            user_setting[key] = value
+                return False
+            validated[key] = value
+        self.user_setting[self.key_name].update(validated)
         # Check saving type
         if self.config_type:
             # Save global settings
@@ -403,14 +409,15 @@ class UserConfig(BaseDialog):
                 time.sleep(0.01)
         # Reload
         self.reloading()
+        return True
 
     def value_error_message(self, option_name: str):
         """Value error message"""
-        msg_text = (
-            f"Invalid value for <b>{format_option_name(option_name)}</b> option."
+        msg_text = self.tr(
+            "Invalid value for <b>{option}</b> option."
             "<br><br>Changes are not saved."
-        )
-        QMessageBox.warning(self, "Error", msg_text)
+        ).format(option=option_label(option_name))
+        QMessageBox.warning(self, self.tr("Error"), msg_text)
 
     def create_options(self, layout: QGridLayout, option_word_set: set[str]):
         """Create options"""
@@ -425,12 +432,18 @@ class UserConfig(BaseDialog):
             if show_group_title:
                 group_name = option_group_name(key, next_key, group_name)
                 if group_name and group_name != "_same_group":
-                    self._add_group_label(row_index, format_option_name(group_name), layout)
+                    self._add_group_label(row_index, group_name, layout)
                     row_index += 1
             # Option name
-            option_name = format_option_name(key)
+            language_option = self.key_name == "application" and key == "ui_language"
+            option_name = self.tr("Language (Restart Required)") if language_option else option_label(key)
+            english_name = format_option_name(key)
+            option_word_set.update(english_name.split())
             option_word_set.update(option_name.split())
-            self._add_option_label(row_index, option_name, layout)
+            self._add_option_label(row_index, key, option_name, layout)
+            if language_option:
+                self._add_option_language(row_index, key, layout)
+                continue
             # Bool
             if re.search(rxp.CFG_BOOL, key):
                 self._add_option_bool(row_index, key, layout)
@@ -484,16 +497,19 @@ class UserConfig(BaseDialog):
                 return True
         return False
 
-    def _add_group_label(self, row_index: int, option_name: str, layout: QGridLayout):
+    def _add_group_label(self, row_index: int, key: str, layout: QGridLayout):
         """Option group"""
-        label = OptionGroup(option_name, self)
+        label = OptionGroup(option_label(key), self)
         label.setAlignment(Qt.AlignCenter)
+        label.setProperty("searchAliases", f"{format_option_name(key)} {key}".casefold())
         layout.addWidget(label, row_index, COLUMN_LABEL, 1, 2)
 
-    def _add_option_label(self, row_index: int, option_name: str, layout: QGridLayout):
+    def _add_option_label(self, row_index: int, key: str, option_name: str, layout: QGridLayout):
         """Option label"""
         label = QLabel(option_name, self)
         label.setMinimumHeight(UIScaler.size(1.8))
+        # 仍可按上游文档中的英文名称或配置键搜索。
+        label.setProperty("searchAliases", f"{format_option_name(key)} {key}".casefold())
         layout.addWidget(label, row_index, COLUMN_LABEL)
 
     def _add_option_bool(self, row_index: int, key: str, layout: QGridLayout):
@@ -542,6 +558,15 @@ class UserConfig(BaseDialog):
         editor.setCurrentText(str(self.user_setting[self.key_name][key]))
         editor.set_default(self.default_setting[self.key_name][key])
         # Add layout
+        self._set_option_layout(editor, row_index, key, layout)
+
+    def _add_option_language(self, row_index: int, key: str, layout: QGridLayout):
+        """Select the saved language using its locale code."""
+        editor = LanguageEdit(self)
+        for code, name in APP.LANGUAGES.items():
+            editor.addItem(name, code)
+        editor.setCurrentIndex(editor.findData(self.user_setting[self.key_name][key]))
+        editor.set_default(self.default_setting[self.key_name][key])
         self._set_option_layout(editor, row_index, key, layout)
 
     def _add_option_clock(self, row_index: int, key: str, layout: QGridLayout):
@@ -597,7 +622,7 @@ class UserConfig(BaseDialog):
 def set_preset_name(preset_name: str, config_type: str) -> str:
     """Set preset name"""
     if config_type == CONFIG.TYPE_CONFIG:
-        preset_name += " (global)"
+        preset_name += QCoreApplication.translate("UserConfig", " (global)")
     return preset_name
 
 

@@ -187,29 +187,29 @@ class PaceNotesControl(QWidget):
         self.pace_notes_player = PaceNotesPlayer(self, self.mcfg)
 
         # Pace notes file selector
-        self.checkbox_file = QCheckBox("Manually Select Pace Notes File")
+        self.checkbox_file = QCheckBox(self.tr("Manually Select Pace Notes File"))
         self.checkbox_file.toggled.connect(self.toggle_selector_state)
 
         self.file_selector = QLineEdit()
         self.file_selector.setReadOnly(True)
-        self.button_openfile = CompactButton("Open")
+        self.button_openfile = CompactButton(self.tr("Open"))
         self.button_openfile.clicked.connect(self.set_notes_path)
 
         # Sound path selector
-        label_path = QLabel("Sound File Path:")
+        label_path = QLabel(self.tr("Sound File Path:"))
         self.path_selector = QLineEdit()
         self.path_selector.setReadOnly(True)
-        button_openpath = CompactButton("Open")
+        button_openpath = CompactButton(self.tr("Open"))
         button_openpath.clicked.connect(self.set_sound_path)
 
         # Sound file format
-        label_format = QLabel("Sound Format:")
+        label_format = QLabel(self.tr("Sound Format:"))
         self.combobox_format = QComboBox()
         self.combobox_format.setEditable(True)
         self.combobox_format.addItems(("wav", "mp3", "aac"))
 
         # Global Offset
-        label_offset = QLabel("Global Offset:")
+        label_offset = QLabel(self.tr("Global Offset:"))
         self.spinbox_offset = QDoubleSpinBox()
         self.spinbox_offset.setRange(-9999, 9999)
         self.spinbox_offset.setSingleStep(1)
@@ -217,7 +217,7 @@ class PaceNotesControl(QWidget):
         self.spinbox_offset.setSuffix("m")
 
         # Max playback duration per sound
-        label_max_duration = QLabel("Maximum Duration:")
+        label_max_duration = QLabel(self.tr("Maximum Duration:"))
         self.spinbox_max_duration = QDoubleSpinBox()
         self.spinbox_max_duration.setRange(0.2, 60)
         self.spinbox_max_duration.setSingleStep(1)
@@ -225,23 +225,23 @@ class PaceNotesControl(QWidget):
         self.spinbox_max_duration.setSuffix("s")
 
         # Max playback queue
-        label_max_queue = QLabel("Maximum Queue:")
+        label_max_queue = QLabel(self.tr("Maximum Queue:"))
         self.spinbox_max_queue = QDoubleSpinBox()
         self.spinbox_max_queue.setRange(1, 50)
         self.spinbox_max_queue.setSingleStep(1)
         self.spinbox_max_queue.setDecimals(0)
 
         # Sound volumn slider
-        self.label_volume = QLabel("Playback Volume: 0%")
+        self.label_volume = QLabel(self.tr("Playback Volume: {volume}%").format(volume=0))
         self.slider_volume = QSlider(Qt.Horizontal)
         self.slider_volume.setRange(0, 100)
         self.slider_volume.valueChanged.connect(self.set_sound_volume)
 
         # Playback option
-        self.checkbox_playinpit = QCheckBox("Enable Playback While in Pit Lane")
+        self.checkbox_playinpit = QCheckBox(self.tr("Enable Playback While in Pit Lane"))
         self.checkbox_playinpit.toggled.connect(self.toggle_playinpit_state)
 
-        self.checkbox_playwhilespectate = QCheckBox("Enable Playback While Spectating")
+        self.checkbox_playwhilespectate = QCheckBox(self.tr("Enable Playback While Spectating"))
         self.checkbox_playwhilespectate.toggled.connect(self.toggle_playwhilespectate_state)
 
         # Frame layout
@@ -284,7 +284,7 @@ class PaceNotesControl(QWidget):
         self.frame_control.setLayout(layout_setting)
 
         # Button
-        self.button_apply = QPushButton("Apply")
+        self.button_apply = QPushButton(self.tr("Apply"))
         self.button_apply.clicked.connect(self.set_playback_setting)
 
         self.button_toggle = QPushButton("")
@@ -330,10 +330,10 @@ class PaceNotesControl(QWidget):
     def set_enable_state(self, enabled: bool):
         """Set enabled state"""
         if enabled:
-            self.button_toggle.setText("  Playback Enabled  ")
+            self.button_toggle.setText(self.tr("  Playback Enabled  "))
             logger.info("ENABLED: pace notes sounds playback")
         else:
-            self.button_toggle.setText("  Playback Disabled  ")
+            self.button_toggle.setText(self.tr("  Playback Disabled  "))
             logger.info("DISABLED: pace notes sounds playback")
         self.button_toggle.setChecked(enabled)
         self.button_apply.setDisabled(not enabled)
@@ -377,7 +377,7 @@ class PaceNotesControl(QWidget):
 
     def set_sound_volume(self, volume: int):
         """Set sound volume"""
-        self.label_volume.setText(f"Playback Volume: {volume}%")
+        self.label_volume.setText(self.tr("Playback Volume: {volume}%").format(volume=volume))
         if self.update_config("pace_notes_sound_volume", volume):
             self.pace_notes_player.set_volume(volume)
 

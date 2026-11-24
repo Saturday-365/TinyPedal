@@ -52,20 +52,20 @@ class PresetList(QWidget):
         self.label_loaded = QLabel("")
 
         # Button
-        button_refresh = QPushButton("Refresh")
+        button_refresh = QPushButton(self.tr("Refresh"))
         button_refresh.clicked.connect(self.refresh)
 
-        button_transfer = QPushButton("Transfer")
+        button_transfer = QPushButton(self.tr("Transfer"))
         button_transfer.clicked.connect(self.open_preset_transfer)
 
-        button_restore = QPushButton("Restore")
+        button_restore = QPushButton(self.tr("Restore"))
         button_restore.clicked.connect(self.open_restore_backup)
 
-        button_create = QPushButton("New")
+        button_create = QPushButton(self.tr("New"))
         button_create.clicked.connect(self.open_create_preset)
 
         # Check box
-        self.checkbox_autoload = QCheckBox("Auto Load Primary Preset")
+        self.checkbox_autoload = QCheckBox(self.tr("Auto Load Primary Preset"))
         self.checkbox_autoload.setChecked(cfg.application["enable_auto_load_preset"])
         self.checkbox_autoload.toggled.connect(self.toggle_autoload)
 
@@ -110,8 +110,10 @@ class PresetList(QWidget):
             self.listbox_preset.setItemWidget(item, label_item)
 
         loaded_preset = cfg.filename.setting
-        locked_tag = " (locked)" if loaded_preset in cfg.user.filelock else ""
-        self.label_loaded.setText(f"Loaded: <b>{loaded_preset[:-5]}{locked_tag}</b>")
+        locked_tag = self.tr(" (locked)") if loaded_preset in cfg.user.filelock else ""
+        self.label_loaded.setText(self.tr("Loaded: <b>{preset}{tag}</b>").format(
+            preset=loaded_preset[:-5], tag=locked_tag,
+        ))
         self.checkbox_autoload.setChecked(cfg.application["enable_auto_load_preset"])
 
     def load_preset(self):
@@ -122,7 +124,7 @@ class PresetList(QWidget):
 
     def open_create_preset(self):
         """Create new preset"""
-        _dialog = CreatePreset(self, title="Create new default preset")
+        _dialog = CreatePreset(self, title=self.tr("Create new default preset"))
         _dialog.open()
 
     def open_preset_transfer(self):
@@ -153,89 +155,94 @@ class PresetList(QWidget):
 
         # Create context menu
         menu = QMenu()  # no parent for temp menu
-        menu.addAction("Unlock Preset" if is_locked else "Lock Preset")
-        menu.addAction("Backup Preset")
+        lock_action = menu.addAction(self.tr("Unlock Preset") if is_locked else self.tr("Lock Preset"))
+        lock_action.setData("unlock" if is_locked else "lock")
+        menu.addAction(self.tr("Backup Preset")).setData("backup")
         menu.addSeparator()
 
-        menu_class = menu.addMenu("Set Primary for Class")
+        menu_class = menu.addMenu(self.tr("Set Primary for Class"))
         for class_name in cfg.user.classes:
-            menu_class.addAction(class_name)
+            menu_class.addAction(class_name).setData(class_name)
 
-        menu.addAction("Clear Primary Tag")
+        menu.addAction(self.tr("Clear Primary Tag")).setData("clear_primary")
         menu.addSeparator()
-        menu.addAction("Duplicate")
+        menu.addAction(self.tr("Duplicate")).setData("duplicate")
         if not is_locked:
-            menu.addAction("Rename")
-            menu.addAction("Delete")
+            menu.addAction(self.tr("Rename")).setData("rename")
+            menu.addAction(self.tr("Delete")).setData("delete")
 
         selected_action = menu.exec_(self.listbox_preset.mapToGlobal(position))
         if not selected_action:
             return
-        action = selected_action.text()
+        # 用操作标识分派命令，显示语言和用户自定义组别名不会改变操作。
+        action = selected_action.data()
 
         # Set primary preset Class
-        if action in cfg.user.classes:
+        if selected_action in menu_class.actions():
             cfg.user.classes[action]["preset"] = selected_preset_name
             cfg.save(config_type=CONFIG.TYPE_CLASSES)
         # Clear primary preset tag
-        elif action == "Clear Primary Tag":
+        elif action == "clear_primary":
             for class_name, class_data in cfg.user.classes.items():
                 if selected_preset_name == class_data["preset"]:
                     class_data["preset"] = ""
                     cfg.save(config_type=CONFIG.TYPE_CLASSES)
         # Lock/unlock preset
-        elif action == "Lock Preset":
-            msg_text = (
-                f"Lock <b>{selected_filename}</b> preset?<br><br>"
+        elif action == "lock":
+            msg_text = self.tr(
+                "Lock <b>{preset}</b> preset?<br><br>"
                 "Changes to locked preset will not be saved."
-            )
-            if self.confirm_operation(title="Lock Preset", message=msg_text):
+            ).format(preset=selected_filename)
+            if self.confirm_operation(title=self.tr("Lock Preset"), message=msg_text):
                 cfg.user.filelock[selected_filename] = {"version": APP.VERSION}
                 cfg.save(config_type=CONFIG.TYPE_FILELOCK)
-        elif action == "Unlock Preset":
-            msg_text = f"Unlock <b>{selected_filename}</b> preset?"
-            if self.confirm_operation(title="Unlock Preset", message=msg_text):
+        elif action == "unlock":
+            msg_text = self.tr("Unlock <b>{preset}</b> preset?").format(preset=selected_filename)
+            if self.confirm_operation(title=self.tr("Unlock Preset"), message=msg_text):
                 if cfg.user.filelock.pop(selected_filename, None):
                     cfg.save(config_type=CONFIG.TYPE_FILELOCK)
         # Backup preset
-        elif action == "Backup Preset":
-            msg_text = (
-                f"Create a backup file for <b>{selected_filename}</b> preset?<br><br>"
+        elif action == "backup":
+            msg_text = self.tr(
+                "Create a backup file for <b>{preset}</b> preset?<br><br>"
                 "Backup file can be restored by click 'Restore' button."
-            )
-            if self.confirm_operation(title="Backup Preset", message=msg_text):
+            ).format(preset=selected_filename)
+            title = self.tr("Backup Preset")
+            if self.confirm_operation(title=title, message=msg_text):
                 backup_extension = set_backup_timestamp()
                 if create_backup_file(selected_filename, cfg.path.settings, backup_extension, show_log=True):
-                    msg_text = f"Backup saved as:<br><b>{selected_filename}{backup_extension}</b>"
-                    QMessageBox.information(self, "Backup Preset", msg_text)
+                    msg_text = self.tr("Backup saved as:<br><b>{file}</b>").format(
+                        file=selected_filename + backup_extension,
+                    )
+                    QMessageBox.information(self, title, msg_text)
                 else:
-                    msg_text = "Failed to create backup, please try again."
-                    QMessageBox.warning(self, "Backup Preset", msg_text)
+                    msg_text = self.tr("Failed to create backup, please try again.")
+                    QMessageBox.warning(self, title, msg_text)
         # Duplicate preset
-        elif action == "Duplicate":
+        elif action == "duplicate":
             _dialog = CreatePreset(
                 self,
-                title="Duplicate Preset",
+                title=self.tr("Duplicate Preset"),
                 mode="duplicate",
                 source_filename=selected_filename
             )
             _dialog.open()
         # Rename preset
-        elif action == "Rename":
+        elif action == "rename":
             _dialog = CreatePreset(
                 self,
-                title="Rename Preset",
+                title=self.tr("Rename Preset"),
                 mode="rename",
                 source_filename=selected_filename
             )
             _dialog.open()
         # Delete preset
-        elif action == "Delete":
-            msg_text = (
-                f"Delete <b>{selected_filename}</b> preset permanently?<br><br>"
+        elif action == "delete":
+            msg_text = self.tr(
+                "Delete <b>{preset}</b> preset permanently?<br><br>"
                 "This cannot be undone!"
-            )
-            if self.confirm_operation(title="Delete Preset", message=msg_text):
+            ).format(preset=selected_filename)
+            if self.confirm_operation(title=self.tr("Delete Preset"), message=msg_text):
                 full_path = f"{cfg.path.settings}{selected_filename}"
                 if os.path.exists(full_path):
                     os.remove(full_path)

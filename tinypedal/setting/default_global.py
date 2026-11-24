@@ -21,7 +21,7 @@ Default global (config) setting
 """
 
 from .. import paths
-from ..constant import API, PLATFORM
+from ..constant import API, APP, PLATFORM
 from ..version import __version__
 
 GLOBAL_DEFAULT = {
@@ -29,6 +29,7 @@ GLOBAL_DEFAULT = {
         "version": __version__,
     },
     "application": {
+        "ui_language": APP.DEFAULT_LANGUAGE,
         "show_at_startup": True,
         "minimize_to_tray": PLATFORM.WINDOWS,
         "remember_position": True,

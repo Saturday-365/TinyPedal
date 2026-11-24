@@ -68,6 +68,12 @@ class APP:
     DESCRIPTION = "Free and Open Source telemetry overlay application for racing simulation."
     LICENSE = "Licensed under the GNU General Public License v3.0 or later."
 
+    DEFAULT_LANGUAGE = "en"
+    LANGUAGES = MappingProxyType({
+        "en": "English",
+        "zh_CN": "简体中文",
+    })
+
     # URL
     URL_WEBSITE = f"https://github.com/{REPOSITORY}"
     URL_SOURCECODE = f"{URL_WEBSITE}/blob/master/"
@@ -258,6 +264,7 @@ class FILE:
     PATH_IMAGE = "images/"
     PATH_DOC = "docs/"
     PATH_THIRDPARTYLICENSES = "docs/licenses/"
+    PATH_TRANSLATIONS = "tinypedal/translations/"
 
     # File extension
     # Common
