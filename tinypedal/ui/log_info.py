@@ -34,6 +34,7 @@ from PySide2.QtWidgets import (
 from .. import log_stream
 from ..constant import FILE
 from ._common import BaseDialog, CompactButton, UIScaler, singleton_dialog
+from .i18n import file_filter_label
 
 
 @singleton_dialog("log", show_error=False)
@@ -42,7 +43,7 @@ class LogInfo(BaseDialog):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.set_utility_title("Log")
+        self.set_utility_title(self.tr("Log"))
 
         self._update_timer = QBasicTimer()
         self.last_position = -1
@@ -54,24 +55,24 @@ class LogInfo(BaseDialog):
         self.refresh_log()
 
         # Check box
-        checkbox_autorefresh = QCheckBox("Auto Refresh")
+        checkbox_autorefresh = QCheckBox(self.tr("Auto Refresh"))
         checkbox_autorefresh.setChecked(False)
         checkbox_autorefresh.toggled.connect(self.toggle_auto_refresh)
 
         # Button
-        button_save = CompactButton("Save")
+        button_save = CompactButton(self.tr("Save"))
         button_save.clicked.connect(self.save_log)
 
-        button_copy = CompactButton("Copy")
+        button_copy = CompactButton(self.tr("Copy"))
         button_copy.clicked.connect(self.copy_log)
 
-        button_clear = CompactButton("Clear")
+        button_clear = CompactButton(self.tr("Clear"))
         button_clear.clicked.connect(self.clear_log)
 
-        self.button_refresh = CompactButton("Refresh")
+        self.button_refresh = CompactButton(self.tr("Refresh"))
         self.button_refresh.clicked.connect(self.refresh_log)
 
-        button_close = CompactButton("Close")
+        button_close = CompactButton(self.tr("Close"))
         button_close.clicked.connect(self.reject)
 
         # Layout
@@ -113,7 +114,7 @@ class LogInfo(BaseDialog):
 
     def clear_log(self):
         """Clear log"""
-        if self.confirm_operation(message="Clear all log?"):
+        if self.confirm_operation(message=self.tr("Clear all log?")):
             log_stream.truncate(0)
             log_stream.seek(0)
             self.refresh_log()
@@ -122,14 +123,15 @@ class LogInfo(BaseDialog):
         """Copy log"""
         self.log_view.selectAll()
         self.log_view.copy()
-        QMessageBox.information(self, "Copy", "Copied all log to Clipboard.")
+        QMessageBox.information(self, self.tr("Copy"), self.tr("Copied all log to Clipboard."))
 
     def save_log(self):
         """Save log"""
         filename_full = QFileDialog.getSaveFileName(
             self,
+            self.tr("Save Log"),
             dir="log",
-            filter=";;".join((FILE.FILTER_TXT, FILE.FILTER_LOG, FILE.FILTER_ALL)),
+            filter=";;".join(map(file_filter_label, (FILE.FILTER_TXT, FILE.FILTER_LOG, FILE.FILTER_ALL))),
         )[0]
         if not filename_full:
             return

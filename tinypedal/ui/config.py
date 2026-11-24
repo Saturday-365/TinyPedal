@@ -26,7 +26,7 @@ import os
 import re
 import time
 from itertools import islice, zip_longest
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Iterable, Mapping, Sequence
 
 from PySide2.QtCore import QCoreApplication, Qt
 from PySide2.QtGui import QFontDatabase
@@ -67,12 +67,12 @@ from ._option import (
     FloatEdit,
     ImagePathEdit,
     IntegerEdit,
-    LanguageEdit,
     OptionGroup,
     StringEdit,
+    ValueDropDownEdit,
 )
 from .display_order import DisplayOrder
-from .i18n import module_label, option_label
+from .i18n import module_label, option_label, value_label
 
 COLUMN_LABEL = 0  # grid layout column index
 COLUMN_OPTION = 1
@@ -91,28 +91,30 @@ class FontConfig(BaseDialog):
 
     def __init__(self, parent, user_setting: dict, reload_func: Callable):
         super().__init__(parent)
-        self.set_config_title("Global Font Override", cfg.filename.setting)
+        self.set_config_title(self.tr("Global Font Override"), cfg.filename.setting)
 
         self.reloading = reload_func
         self.user_setting = user_setting
 
         # Create options
-        self.edit_fontname = DropDownListEdit(self)
-        self.edit_fontname.addItem("no change")
-        self.edit_fontname.addItems(get_font_list())
+        self.edit_fontname = ValueDropDownEdit(self)
+        self.edit_fontname.addItem(value_label("no change"), "no change")
+        for name in get_font_list():
+            self.edit_fontname.addItem(name, name)
         self.edit_fontname.setFixedWidth(UIScaler.size(9))
 
         self.edit_fontsize = QSpinBox(self)
         self.edit_fontsize.setRange(-999, 999)
         self.edit_fontsize.setFixedWidth(UIScaler.size(9))
 
-        self.edit_fontweight = DropDownListEdit(self)
-        self.edit_fontweight.addItem("no change")
-        self.edit_fontweight.addItems(rxp.CHOICE_COMMON[rxp.CFG_FONT_WEIGHT])
+        self.edit_fontweight = ValueDropDownEdit(self)
+        for weight in ("no change", *rxp.CHOICE_COMMON[rxp.CFG_FONT_WEIGHT]):
+            self.edit_fontweight.addItem(value_label(weight), weight)
         self.edit_fontweight.setFixedWidth(UIScaler.size(9))
 
-        self.edit_autooffset = DropDownListEdit(self)
-        self.edit_autooffset.addItems(("no change", "enable", "disable"))
+        self.edit_autooffset = ValueDropDownEdit(self)
+        for value in ("no change", "enable", "disable"):
+            self.edit_autooffset.addItem(value_label(value), value)
         self.edit_autooffset.setFixedWidth(UIScaler.size(9))
 
         self.edit_fontoffset = QSpinBox(self)
@@ -171,13 +173,13 @@ class FontConfig(BaseDialog):
             for key in setting:
                 # Font name
                 if re.search(rxp.CFG_FONT_NAME, key):
-                    font_name = self.edit_fontname.currentText()
+                    font_name = self.edit_fontname.currentData()
                     if font_name != "no change":
                         setting[key] = font_name
                     continue
                 # Font weight
                 if re.search(rxp.CFG_FONT_WEIGHT, key):
-                    font_weight = self.edit_fontweight.currentText()
+                    font_weight = self.edit_fontweight.currentData()
                     if font_weight != "no change":
                         setting[key] = font_weight
                     continue
@@ -189,7 +191,7 @@ class FontConfig(BaseDialog):
                     continue
                 # Auto font offset
                 if key == "enable_auto_font_offset":
-                    auto_offset = self.edit_autooffset.currentText()
+                    auto_offset = self.edit_autooffset.currentData()
                     if auto_offset == "disable":
                         setting[key] = False
                     elif auto_offset == "enable":
@@ -442,7 +444,8 @@ class UserConfig(BaseDialog):
             option_word_set.update(option_name.split())
             self._add_option_label(row_index, key, option_name, layout)
             if language_option:
-                self._add_option_language(row_index, key, layout)
+                items = ((code, value_label(name)) for code, name in APP.LANGUAGES.items())
+                self._add_option_values(row_index, key, layout, items)
                 continue
             # Bool
             if re.search(rxp.CFG_BOOL, key):
@@ -472,7 +475,10 @@ class UserConfig(BaseDialog):
                 continue
             # Heatmap string
             if re.search(rxp.CFG_HEATMAP, key):
-                self._add_option_combolist(row_index, key, layout, cfg.user.heatmap.keys())
+                # 仅显示内置热力图的译名，自定义名称仍可直接识别。
+                items = ((name, value_label(name) if name in cfg.default.heatmap else name)
+                         for name in cfg.user.heatmap)
+                self._add_option_values(row_index, key, layout, items)
                 continue
             # Clock format string
             if re.search(rxp.CFG_CLOCK_FORMAT, key):
@@ -493,7 +499,8 @@ class UserConfig(BaseDialog):
         """Choice match"""
         for ref_key, choice_list in choice_dict.items():
             if re.search(ref_key, key):
-                self._add_option_combolist(row_index, key, layout, choice_list)
+                items = ((value, value_label(value)) for value in choice_list)
+                self._add_option_values(row_index, key, layout, items)
                 return True
         return False
 
@@ -560,14 +567,21 @@ class UserConfig(BaseDialog):
         # Add layout
         self._set_option_layout(editor, row_index, key, layout)
 
-    def _add_option_language(self, row_index: int, key: str, layout: QGridLayout):
-        """Select the saved language using its locale code."""
-        editor = LanguageEdit(self)
-        for code, name in APP.LANGUAGES.items():
-            editor.addItem(name, code)
-        editor.setCurrentIndex(editor.findData(self.user_setting[self.key_name][key]))
+    def _add_option_values(
+        self, row_index: int, key: str, layout: QGridLayout, items: Iterable[tuple[str, str]],
+    ):
+        """Show translated choices and retain the original setting values."""
+        editor = ValueDropDownEdit(self)
+        # 用 Qt 的条目数据保存配置值，界面只显示译名。
+        for value, label in items:
+            editor.addItem(label, value)
+        selected_index = editor.findData(self.user_setting[self.key_name][key])
+        if selected_index >= 0:
+            editor.setCurrentIndex(selected_index)
         editor.set_default(self.default_setting[self.key_name][key])
-        self._set_option_layout(editor, row_index, key, layout)
+        # 下拉框应容纳较长的译名和单位符号。
+        editor.setSizeAdjustPolicy(ValueDropDownEdit.AdjustToContents)
+        self._set_option_layout(editor, row_index, key, layout, minimum_width=editor.sizeHint().width())
 
     def _add_option_clock(self, row_index: int, key: str, layout: QGridLayout):
         """Clock string"""
@@ -607,13 +621,16 @@ class UserConfig(BaseDialog):
         # Add layout
         self._set_option_layout(editor, row_index, key, layout)
 
-    def _set_option_layout(self, editor: QWidget, row_index: int, key: str, layout: QGridLayout):
+    def _set_option_layout(
+        self, editor: QWidget, row_index: int, key: str, layout: QGridLayout, minimum_width: int = 0,
+    ):
         """Set option column layout"""
         # Set column width (fixed or resizeable)
+        width = max(self.option_width, minimum_width)
         if self.fixed_column:
-            editor.setFixedWidth(self.option_width)
+            editor.setFixedWidth(width)
         else:
-            editor.setMinimumWidth(self.option_width)
+            editor.setMinimumWidth(width)
         # Add layout
         layout.addWidget(editor, row_index, COLUMN_OPTION)
         self.option_edit[key] = editor

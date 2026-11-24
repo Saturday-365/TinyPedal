@@ -40,7 +40,6 @@ from PySide2.QtWidgets import (
 
 from .. import app_signal, cfg, kctrl
 from ..constant import CONFIG, FILE, PLATFORM
-from ..formatter import format_option_name
 from ..hotkey.common import (
     format_hotkey_name,
     get_key_state_function,
@@ -54,6 +53,16 @@ from ..setting.default_shortcuts import (
     SHORTCUTS_WIDGET,
 )
 from ._common import BaseDialog, UIScaler
+from .i18n import module_label, option_label
+
+
+def hotkey_option_label(option_name: str) -> str:
+    """Show a shortcut name without changing its stored key."""
+    if option_name in SHORTCUTS_WIDGET:
+        return module_label(option_name[len("widget_"):])
+    if option_name in SHORTCUTS_MODULE:
+        return module_label(option_name)
+    return option_label(option_name)
 
 
 class HotkeyList(QWidget):
@@ -117,7 +126,9 @@ class HotkeyList(QWidget):
                 cfg.user.shortcuts[option_name]["preset"] = ""
                 cfg.save(config_type=CONFIG.TYPE_SHORTCUTS)
             # Update name
-            item.setText(f"{format_option_name(option_name)}: {preset_name}")
+            item.setText(self.tr("{action}: {preset}").format(
+                action=hotkey_option_label(option_name), preset=preset_name,
+            ))
 
     def set_enable_state(self, enabled: bool):
         """Set enable state"""
@@ -136,15 +147,15 @@ class HotkeyList(QWidget):
     def add_hotkey_category(self, name: str):
         """Add hotkey category header"""
         item = QListWidgetItem()
-        label = QLabel(f"{name} Keybinding", self.listbox_hotkey)
+        label = QLabel(self.tr("{category} Keybinding").format(category=name), self.listbox_hotkey)
         label.setAlignment(Qt.AlignCenter)
         self.listbox_hotkey.addItem(item)
         self.listbox_hotkey.setItemWidget(item, label)
 
-    def add_hotkey_item(self, option_name: str, display_name: str) -> QListWidgetItem:
+    def add_hotkey_item(self, option_name: str) -> QListWidgetItem:
         """Add hotkey item"""
         item = QListWidgetItem()
-        item.setText(format_option_name(display_name))
+        item.setText(hotkey_option_label(option_name))
         module_item = HotkeyConfigItem(self, option_name)
         self.listbox_hotkey.addItem(item)
         self.listbox_hotkey.setItemWidget(item, module_item)
@@ -152,30 +163,30 @@ class HotkeyList(QWidget):
 
     def create_list(self):
         """Create hotkey option list"""
-        self.add_hotkey_category("General")
+        self.add_hotkey_category(self.tr("General"))
         for option_name in SHORTCUTS_GENERAL:
-            self.add_hotkey_item(option_name, option_name)
+            self.add_hotkey_item(option_name)
 
-        self.add_hotkey_category("Preset")
+        self.add_hotkey_category(self.tr("Preset"))
         self.options_preset = []
         for option_name in SHORTCUTS_PRESET:
-            self.options_preset.append(self.add_hotkey_item(option_name, option_name))
+            self.options_preset.append(self.add_hotkey_item(option_name))
 
-        self.add_hotkey_category("Widget")
+        self.add_hotkey_category(self.tr("Widget"))
         for option_name in SHORTCUTS_WIDGET:
-            self.add_hotkey_item(option_name, option_name.replace("widget_", ""))
+            self.add_hotkey_item(option_name)
 
-        self.add_hotkey_category("Module")
+        self.add_hotkey_category(self.tr("Module"))
         for option_name in SHORTCUTS_MODULE:
-            self.add_hotkey_item(option_name, option_name.replace("module_", ""))
+            self.add_hotkey_item(option_name)
 
         self.listbox_hotkey.setCurrentRow(0)
 
     def reset_hotkey(self):
         """Reset hotkey"""
-        msg_text = "Clear all key bindings?<br><br>This cannot be undone!"
+        msg_text = self.tr("Clear all key bindings?<br><br>This cannot be undone!")
         confirm_msg = QMessageBox.question(
-            self, "Confirm", msg_text,
+            self, self.tr("Confirm"), msg_text,
             buttons=QMessageBox.Yes | QMessageBox.No,
             defaultButton=QMessageBox.No,
         )
@@ -233,7 +244,7 @@ class HotkeyConfigItem(QWidget):
         if cfg.application["enable_global_hotkey"]:
             kctrl.enable()  # re-enable after config
         self.hotkey_name = cfg.user.shortcuts[self.option_name]["bind"]
-        display_name = format_hotkey_name(self.hotkey_name, "None")
+        display_name = format_hotkey_name(self.hotkey_name, self.tr("None"))
         self.button_config.setText(f" {display_name} " if len(display_name) < 2 else display_name)
         self.button_config.setChecked(self.hotkey_name != "")
 
@@ -243,7 +254,7 @@ class ConfigHotkey(BaseDialog):
 
     def __init__(self, parent, option_name: str, hotkey_name: str, reload_func: Callable):
         super().__init__(parent)
-        self.setWindowTitle(f"Key Binding - {format_option_name(option_name)}")
+        self.setWindowTitle(self.tr("Key Binding - {action}").format(action=hotkey_option_label(option_name)))
 
         self.option_name = option_name
         self.hotkey_name = hotkey_name
@@ -262,7 +273,7 @@ class ConfigHotkey(BaseDialog):
         # Preset selector
         if self.option_name in SHORTCUTS_PRESET:
             self.preset_selector = QComboBox()
-            self.preset_selector.addItem("Select a preset ...")
+            self.preset_selector.addItem(self.tr("Select a preset ..."))
             self.preset_selector.addItems(cfg.preset_files())
             self.preset_selector.setCurrentText(cfg.user.shortcuts[self.option_name]["preset"])
             self.preset_selector.setFocusPolicy(Qt.NoFocus)
@@ -293,11 +304,11 @@ class ConfigHotkey(BaseDialog):
         refresh_keystate(self.get_key_state)
 
         if PLATFORM.WINDOWS:
-            self.text_placeholder = "Press a key or key combination"
+            self.text_placeholder = self.tr("Press a key or key combination")
             self.update_text(format_hotkey_name(hotkey_name, self.text_placeholder, delimiter=" + "))
             self._update_timer.start(200, self)
         else:
-            self.text_placeholder = "Hotkey not supported on Linux"
+            self.text_placeholder = self.tr("Hotkey not supported on Linux")
             self.update_text(self.text_placeholder)
 
     def timerEvent(self, event):
@@ -354,13 +365,15 @@ class ConfigHotkey(BaseDialog):
         for option_name, options in cfg.user.shortcuts.items():
             if options["bind"] != temp_hotkey:
                 continue
-            msg_text = (
-                f"<b>{format_hotkey_name(temp_hotkey)}</b> already used for """
-                f"<b>{format_option_name(option_name)}</b>.<br><br>"
+            msg_text = self.tr(
+                "<b>{shortcut}</b> already used for <b>{action}</b>.<br><br>"
                 "Are you sure to assign the same key anyway?"
+            ).format(
+                shortcut=format_hotkey_name(temp_hotkey),
+                action=hotkey_option_label(option_name),
             )
             confirm_msg = QMessageBox.question(
-                self, "Confirm", msg_text,
+                self, self.tr("Confirm"), msg_text,
                 buttons=QMessageBox.Yes | QMessageBox.Cancel,
                 defaultButton=QMessageBox.Cancel,
             )

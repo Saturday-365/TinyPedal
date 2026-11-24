@@ -32,8 +32,8 @@ from PySide2.QtWidgets import (
     QVBoxLayout,
 )
 
-from ..formatter import format_option_name
 from ._common import BaseDialog, UIScaler
+from .i18n import option_label
 
 
 class DisplayOrder(BaseDialog):
@@ -41,7 +41,7 @@ class DisplayOrder(BaseDialog):
 
     def __init__(self, parent, user_orders: dict, default_orders: dict):
         super().__init__(parent)
-        self.set_config_title("Display Order", parent.windowTitle().split(" - ")[0])
+        self.set_config_title(self.tr("Display Order"), parent.windowTitle().split(" - ")[0])
         self.setMinimumWidth(UIScaler.size(23))
         self.resize(self.size())  # shrink initial size
 
@@ -100,11 +100,11 @@ class DisplayOrder(BaseDialog):
 
     def _reset_order(self):
         """Reset display order"""
-        msg_text = (
+        msg_text = self.tr(
             "Reset <b>Display Order</b> to default?<br><br>"
             "Changes are only saved after clicking Apply Button."
         )
-        if self.confirm_operation(title="Reset Options", message=msg_text):
+        if self.confirm_operation(title=self.tr("Reset Options"), message=msg_text):
             self.list_widget.refresh(self.default_orders)
 
 
@@ -151,8 +151,8 @@ class DisplayOrderList(QListWidget):
     def _add_item(self, key: str):
         """Add display order item"""
         short_key = key.replace("display_order_", "")
-        item = QListWidgetItem(format_option_name(short_key))
+        item = QListWidgetItem(option_label(short_key))
         item.setTextAlignment(Qt.AlignCenter)
-        item.setToolTip("Click & Drag to Reorder Display")
+        item.setToolTip(self.tr("Click & Drag to Reorder Display"))
         item.setData(Qt.UserRole, key)
         self.addItem(item)

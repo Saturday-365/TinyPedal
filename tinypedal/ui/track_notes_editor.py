@@ -70,6 +70,7 @@ from ._common import (
     TableBatchReplace,
     UIScaler,
 )
+from .i18n import file_filter_label, header_label
 from .track_map_viewer import MapView
 
 
@@ -82,12 +83,18 @@ def set_file_path(notes_type: str, filename: str = "") -> str:
     return f"{filepath}{filename}"
 
 
+def notes_file_filters(notes_type: str) -> dict[str, str]:
+    """Map the selected display filter back to its file format."""
+    # Qt 返回显示的筛选项，导入和导出仍按原筛选项判断格式。
+    return {file_filter_label(source): source for source in set_notes_filter(notes_type).split(";;")}
+
+
 class TrackNotesEditor(BaseEditor):
     """Track & pace notes editor"""
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.set_utility_title("Track Notes Editor")
+        self.set_utility_title(self.tr("Track Notes Editor"))
 
         self.decimals = 2
         self.notes_type = None
@@ -122,7 +129,7 @@ class TrackNotesEditor(BaseEditor):
     def toggle_trackmap_panel(self, checked: bool):
         """Toggle trackmap panel"""
         self.trackmap_panel.setHidden(not checked)
-        self.button_showmap.setText("Hide Map" if checked else "Show Map")
+        self.button_showmap.setText(self.tr("Hide Map") if checked else self.tr("Show Map"))
 
     def set_layout_trackmap(self):
         """Set track map panel"""
@@ -167,66 +174,66 @@ class TrackNotesEditor(BaseEditor):
         # File menu
         file_menu = QMenu(self)
 
-        create_pacenotes = file_menu.addAction("New Pace Notes")
+        create_pacenotes = file_menu.addAction(self.tr("New Pace Notes"))
         create_pacenotes.triggered.connect(self.create_pacenotes)
 
-        create_tracknotes = file_menu.addAction("New Track Notes")
+        create_tracknotes = file_menu.addAction(self.tr("New Track Notes"))
         create_tracknotes.triggered.connect(self.create_tracknotes)
 
         file_menu.addSeparator()
 
-        open_pacenotes = file_menu.addAction("Open Pace Notes")
+        open_pacenotes = file_menu.addAction(self.tr("Open Pace Notes"))
         open_pacenotes.triggered.connect(self.load_pacenotes_file)
 
-        open_tracknotes = file_menu.addAction("Open Track Notes")
+        open_tracknotes = file_menu.addAction(self.tr("Open Track Notes"))
         open_tracknotes.triggered.connect(self.load_tracknotes_file)
 
-        button_file = CompactButton("File", has_menu=True)
+        button_file = CompactButton(self.tr("File"), has_menu=True)
         button_file.setMenu(file_menu)
 
         # Set position menu
         setpos_menu = QMenu(self)
 
-        setpos_frommap = setpos_menu.addAction("From Map")
+        setpos_frommap = setpos_menu.addAction(self.tr("From Map"))
         setpos_frommap.triggered.connect(self.set_position_from_map)
 
-        setpos_fromtele = setpos_menu.addAction("From Telemetry")
+        setpos_fromtele = setpos_menu.addAction(self.tr("From Telemetry"))
         setpos_fromtele.triggered.connect(self.set_position_from_tele)
 
-        button_setpos = CompactButton("Set Pos", has_menu=True)
+        button_setpos = CompactButton(self.tr("Set Pos"), has_menu=True)
         button_setpos.setMenu(setpos_menu)
 
         # Button
-        self.button_showmap = CompactButton("Hide Map")
+        self.button_showmap = CompactButton(self.tr("Hide Map"))
         self.button_showmap.setCheckable(True)
         self.button_showmap.setChecked(True)
         self.button_showmap.clicked.connect(self.toggle_trackmap_panel)
 
-        button_add = CompactButton("Add")
+        button_add = CompactButton(self.tr("Add"))
         button_add.clicked.connect(self.add_notes)
 
-        button_insert = CompactButton("Insert")
+        button_insert = CompactButton(self.tr("Insert"))
         button_insert.clicked.connect(self.insert_notes)
 
-        button_sort = CompactButton("Sort")
+        button_sort = CompactButton(self.tr("Sort"))
         button_sort.clicked.connect(self.sort_notes)
 
-        button_delete = CompactButton("Delete")
+        button_delete = CompactButton(self.tr("Delete"))
         button_delete.clicked.connect(self.delete_notes)
 
-        button_replace = CompactButton("Replace")
+        button_replace = CompactButton(self.tr("Replace"))
         button_replace.clicked.connect(self.open_replace_dialog)
 
-        button_offset = CompactButton("Offset")
+        button_offset = CompactButton(self.tr("Offset"))
         button_offset.clicked.connect(self.open_offset_dialog)
 
-        button_metadata = CompactButton("Info")
+        button_metadata = CompactButton(self.tr("Info"))
         button_metadata.clicked.connect(self.open_metadata_dialog)
 
-        button_save = CompactButton("Save As")
+        button_save = CompactButton(self.tr("Save As"))
         button_save.clicked.connect(self.saving)
 
-        button_close = CompactButton("Close")
+        button_close = CompactButton(self.tr("Close"))
         button_close.clicked.connect(self.close)
 
         layout_top = QHBoxLayout()
@@ -262,8 +269,9 @@ class TrackNotesEditor(BaseEditor):
         """Set notes type"""
         self.notes_type = notes_type
         self.notes_header = set_notes_header(notes_type)
-        self.status_bar.showMessage(f"Edit Mode: {notes_type}", 0)
-        self.filename_entry.setPlaceholderText(f"{notes_type} Name")
+        notes_label = self.tr("Pace Notes") if notes_type == NOTESTYPE_PACE else self.tr("Track Notes")
+        self.status_bar.showMessage(self.tr("Edit Mode: {notes_type}").format(notes_type=notes_label), 0)
+        self.filename_entry.setPlaceholderText(self.tr("{notes_type} Name").format(notes_type=notes_label))
 
     def create_pacenotes(self):
         """Create pace notes file"""
@@ -298,10 +306,12 @@ class TrackNotesEditor(BaseEditor):
         if not self.confirm_discard():
             return
 
+        filters = notes_file_filters(notes_type)
         filename_full, file_filter = QFileDialog.getOpenFileName(
             self,
+            self.tr("Open Notes"),
             dir=set_file_path(notes_type),
-            filter=set_notes_filter(notes_type),
+            filter=";;".join(filters),
         )
         if not filename_full:
             return
@@ -313,12 +323,12 @@ class TrackNotesEditor(BaseEditor):
             filepath=filepath,
             filename=filename,
             table_header=notes_header,
-            parser=set_notes_parser(file_filter),
+            parser=set_notes_parser(filters.get(file_filter, file_filter)),
         )
 
         if notes_parsed is None:
-            msg_text = "Cannot open selected file.<br><br>Invalid notes file."
-            QMessageBox.warning(self, "Error", msg_text)
+            msg_text = self.tr("Cannot open selected file.<br><br>Invalid notes file.")
+            QMessageBox.warning(self, self.tr("Error"), msg_text)
             return
 
         notes_sorted, meta_info = notes_parsed
@@ -333,7 +343,7 @@ class TrackNotesEditor(BaseEditor):
         """Refresh notes table"""
         self.table_notes.setRowCount(0)
         self.table_notes.setColumnCount(len(self.notes_header))
-        self.table_notes.setHorizontalHeaderLabels(self.notes_header)
+        self.table_notes.setHorizontalHeaderLabels([header_label(name) for name in self.notes_header])
         self.table_notes.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         self.table_notes.setColumnWidth(0, UIScaler.size(6))
         self.table_notes.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
@@ -364,7 +374,7 @@ class TrackNotesEditor(BaseEditor):
     def open_replace_dialog(self):
         """Open replace dialog"""
         excludes = (COLUMN_DISTANCE, COLUMN_TAGS)
-        selector = {name: index for index, name in enumerate(self.notes_header) if name not in excludes}
+        selector = {header_label(name): index for index, name in enumerate(self.notes_header) if name not in excludes}
         _dialog = TableBatchReplace(self, selector, self.table_notes)
         _dialog.open()
 
@@ -376,11 +386,8 @@ class TrackNotesEditor(BaseEditor):
     def open_offset_dialog(self):
         """Open offset dialog"""
         if self.column_selection_count(0) == 0:
-            msg_text = (
-                "Select <b>one or more values</b> from <b>distance</b> "
-                "column to apply offset."
-            )
-            QMessageBox.warning(self, "Error", msg_text)
+            msg_text = self.tr("Select <b>one or more values</b> from <b>distance</b> column to apply offset.")
+            QMessageBox.warning(self, self.tr("Error"), msg_text)
             return
 
         _dialog = BatchOffset(self, self.apply_batch_offset)
@@ -403,22 +410,22 @@ class TrackNotesEditor(BaseEditor):
 
     def set_position_from_map(self):
         """Set position from map"""
-        self.set_position(float(self.trackmap.map_seek_dist), "from map")
+        self.set_position(float(self.trackmap.map_seek_dist), self.tr("from map"))
 
     def set_position_from_tele(self):
         """Set position from telemetry"""
-        self.set_position(api.read.lap.distance(), "from telemetry")
+        self.set_position(api.read.lap.distance(), self.tr("from telemetry"))
 
     def set_position(self, position: float, source: str):
         """Set position to selected cell"""
         if self.column_selection_count(0) != 1:  # limit to one selected cell
-            msg_text = (
-                "Select <b>one value</b> from <b>distance</b> column to set position."
-            )
-            QMessageBox.warning(self, "Error", msg_text)
+            msg_text = self.tr("Select <b>one value</b> from <b>distance</b> column to set position.")
+            QMessageBox.warning(self, self.tr("Error"), msg_text)
             return
 
-        if not self.confirm_operation(message=f"Set position at <b>{position}</b> {source}?"):
+        if not self.confirm_operation(message=self.tr(
+            "Set position at <b>{position}</b> {source}?"
+        ).format(position=position, source=source)):
             return
 
         pos_curr = round(position, self.decimals)
@@ -450,10 +457,10 @@ class TrackNotesEditor(BaseEditor):
         """Delete notes entry"""
         selected_rows = {data.row() for data in self.table_notes.selectedIndexes()}
         if not selected_rows:
-            QMessageBox.warning(self, "Error", "No data selected.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No data selected."))
             return
 
-        if not self.confirm_operation(message="<b>Delete selected rows?</b>"):
+        if not self.confirm_operation(message=self.tr("<b>Delete selected rows?</b>")):
             return
 
         for row_index in sorted(selected_rows, reverse=True):
@@ -492,21 +499,24 @@ class TrackNotesEditor(BaseEditor):
         if not filename:  # try find track name if file name was not set
             filename = self.get_track_name()
 
+        filters = notes_file_filters(notes_type)
         filename_full, file_filter = QFileDialog.getSaveFileName(
             self,
+            self.tr("Save Notes"),
             dir=set_file_path(notes_type, filename),
-            filter=set_notes_filter(notes_type),
+            filter=";;".join(filters),
         )
         if not filename_full:  # save canceled
             return
 
+        file_filter = filters.get(file_filter, file_filter)
         output_header = set_notes_header_by_filter(file_filter)
         if not output_header:  # fallback to current header
             output_header = self.notes_header
         output_notes = self.update_notes_temp(output_header)
 
         if not output_notes:
-            QMessageBox.warning(self, "Error", "Nothing to save.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Nothing to save."))
             return
 
         filepath = os.path.dirname(filename_full) + "/"
@@ -521,8 +531,10 @@ class TrackNotesEditor(BaseEditor):
         )
         self.filename_entry.setText(filename)
         self.set_unmodified()
-        msg_text = f"Notes saved at:<br><b>{filename_full}</b>"
-        QMessageBox.information(self, "Saved", msg_text)
+        msg_text = self.tr(
+            "Notes saved at:<br><b>{filename_full}</b>"
+        ).format(filename_full=filename_full)
+        QMessageBox.information(self, self.tr("Saved"), msg_text)
 
     def column_selection_count(self, column_index: int = 0) -> int:
         """Column selection count"""
@@ -546,18 +558,18 @@ class TrackNotesEditor(BaseEditor):
     def set_context_menu(self):
         """Set context menu"""
         menu = QMenu(self)
-        menu.addAction("Highlight on Map")
+        menu.addAction(self.tr("Highlight on Map")).setData("highlight")
         menu.addSeparator()
-        tag_menu = menu.addMenu("Add Tag")
-        tag_menu.addAction("Pit")
-        menu.addAction("Clear Tag")
+        tag_menu = menu.addMenu(self.tr("Add Tag"))
+        tag_menu.addAction(self.tr("Pit")).setData("pit")
+        menu.addAction(self.tr("Clear Tag")).setData("clear_tag")
         menu.addSeparator()
-        menu.addAction("Set from Map")
-        menu.addAction("Set from Telemetry")
+        menu.addAction(self.tr("Set from Map")).setData("from_map")
+        menu.addAction(self.tr("Set from Telemetry")).setData("from_telemetry")
         menu.addSeparator()
-        menu.addAction("Insert Row Above")
-        menu.addAction("Insert Row Below")
-        menu.addAction("Delete Rows")
+        menu.addAction(self.tr("Insert Row Above")).setData("insert_above")
+        menu.addAction(self.tr("Insert Row Below")).setData("insert_below")
+        menu.addAction(self.tr("Delete Rows")).setData("delete_rows")
         return menu
 
     def open_context_menu(self, position: QPoint):
@@ -575,23 +587,23 @@ class TrackNotesEditor(BaseEditor):
         if not selected_action:
             return
 
-        action = selected_action.text()
-        if action == "Highlight on Map":
+        action = selected_action.data()
+        if action == "highlight":
             self.mark_positions_on_map()
             self.highlight_position_on_map()
-        elif action == "Pit":
+        elif action == "pit":
             self.add_tag(TAG_PITNOTES)
-        elif action == "Clear Tag":
+        elif action == "clear_tag":
             self.clear_tag()
-        elif action == "Set from Map":
+        elif action == "from_map":
             self.set_position_from_map()
-        elif action == "Set from Telemetry":
+        elif action == "from_telemetry":
             self.set_position_from_tele()
-        elif action == "Insert Row Above":
+        elif action == "insert_above":
             self.insert_notes(0)
-        elif action == "Insert Row Below":
+        elif action == "insert_below":
             self.insert_notes(1)
-        elif action == "Delete Rows":
+        elif action == "delete_rows":
             self.delete_notes()
 
     def add_tag(self, tag_name: str):
@@ -606,7 +618,7 @@ class TrackNotesEditor(BaseEditor):
 
     def clear_tag(self):
         """Remove all tags"""
-        if self.confirm_operation("Clear Tag", "Clear all tags from selected notes?"):
+        if self.confirm_operation(self.tr("Clear Tag"), self.tr("Clear all tags from selected notes?")):
             column_index = 3
             row_indexes = {data.row() for data in self.table_notes.selectedIndexes()}
             for row_index in row_indexes:
@@ -641,7 +653,7 @@ class MetaDataEditor(BaseDialog):
 
     def __init__(self, parent, metadata: dict):
         super().__init__(parent)
-        self.setWindowTitle("Metadata Info")
+        self.setWindowTitle(self.tr("Metadata Info"))
 
         self.metadata = metadata
         self.option_metadata = {}
@@ -651,7 +663,7 @@ class MetaDataEditor(BaseDialog):
         layout_option.setAlignment(Qt.AlignTop)
 
         for index, fieldname in enumerate(metadata):
-            desc_label = QLabel(f"{fieldname.capitalize()}:")
+            desc_label = QLabel(f"{header_label(fieldname.capitalize())}:")
             edit_entry = QLineEdit()
             edit_entry.setText(metadata[fieldname])
             layout_option.addWidget(desc_label, index, 0)
@@ -659,10 +671,10 @@ class MetaDataEditor(BaseDialog):
             self.option_metadata[fieldname] = edit_entry
 
         # Button
-        button_save = QPushButton("Ok")
+        button_save = QPushButton(self.tr("Ok"))
         button_save.clicked.connect(self.saving)
 
-        button_close = QPushButton("Close")
+        button_close = QPushButton(self.tr("Close"))
         button_close.clicked.connect(self.reject)
 
         layout_button = QHBoxLayout()

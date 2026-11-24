@@ -45,6 +45,7 @@ from ..constant import API, CONFIG, FILE
 from ..userfile.brands import extract_brand_name
 from ..userfile.json_setting import copy_setting
 from ._common import BaseEditor, CompactButton, TableBatchReplace, UIScaler
+from .i18n import file_filter_label, header_label
 
 HEADER_BRANDS = "Vehicle name","Brand name"
 
@@ -56,7 +57,7 @@ class VehicleBrandEditor(BaseEditor):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.set_utility_title("Vehicle Brand Editor")
+        self.set_utility_title(self.tr("Vehicle Brand Editor"))
         self.setMinimumSize(UIScaler.size(45), UIScaler.size(38))
 
         self.brands_temp = copy_setting(cfg.user.brands)
@@ -64,7 +65,7 @@ class VehicleBrandEditor(BaseEditor):
         # Set table
         self.table_brands = QTableWidget(self)
         self.table_brands.setColumnCount(len(HEADER_BRANDS))
-        self.table_brands.setHorizontalHeaderLabels(HEADER_BRANDS)
+        self.table_brands.setHorizontalHeaderLabels([header_label(name) for name in HEADER_BRANDS])
         self.table_brands.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_brands.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
 
@@ -87,38 +88,38 @@ class VehicleBrandEditor(BaseEditor):
         # Menu
         import_menu = QMenu(self)
 
-        import_rf2 = import_menu.addAction("RF2 Rest API")
+        import_rf2 = import_menu.addAction(self.tr("RF2 Rest API"))
         import_rf2.triggered.connect(self.import_from_rf2)
 
-        import_json = import_menu.addAction("JSON file")
+        import_json = import_menu.addAction(self.tr("JSON file"))
         import_json.triggered.connect(self.import_from_file)
 
         # Button
-        button_import = CompactButton("Import from", has_menu=True)
+        button_import = CompactButton(self.tr("Import from"), has_menu=True)
         button_import.setMenu(import_menu)
 
-        button_add = CompactButton("Add")
+        button_add = CompactButton(self.tr("Add"))
         button_add.clicked.connect(self.add_brand)
 
-        button_sort = CompactButton("Sort")
+        button_sort = CompactButton(self.tr("Sort"))
         button_sort.clicked.connect(self.sort_brand)
 
-        button_delete = CompactButton("Delete")
+        button_delete = CompactButton(self.tr("Delete"))
         button_delete.clicked.connect(self.delete_brand)
 
-        button_replace = CompactButton("Replace")
+        button_replace = CompactButton(self.tr("Replace"))
         button_replace.clicked.connect(self.open_replace_dialog)
 
-        button_reset = CompactButton("Reset")
+        button_reset = CompactButton(self.tr("Reset"))
         button_reset.clicked.connect(self.reset_setting)
 
-        button_apply = CompactButton("Apply")
+        button_apply = CompactButton(self.tr("Apply"))
         button_apply.clicked.connect(self.applying)
 
-        button_save = CompactButton("Save")
+        button_save = CompactButton(self.tr("Save"))
         button_save.clicked.connect(self.saving)
 
-        button_close = CompactButton("Close")
+        button_close = CompactButton(self.tr("Close"))
         button_close.clicked.connect(self.close)
 
         # Set layout
@@ -162,15 +163,17 @@ class VehicleBrandEditor(BaseEditor):
         except (AttributeError, TypeError, IndexError, KeyError, ValueError,
                 OSError, TimeoutError, BaseException):
             logger.error("Failed importing vehicle data from %s Rest API", sim_name)
-            msg_text = (
-                f"Unable to import vehicle data from {sim_name} Rest API.<br><br>"
-                "Make sure game is running and try again."
-            )
-            QMessageBox.warning(self, "Error", msg_text)
+            msg_text = self.tr(
+                "Unable to import vehicle data from {sim_name} Rest API.<br><br>Make sure game "
+                "is running and try again."
+            ).format(sim_name=sim_name)
+            QMessageBox.warning(self, self.tr("Error"), msg_text)
 
     def import_from_file(self):
         """Import brand from file"""
-        filename_full = QFileDialog.getOpenFileName(self, filter=FILE.FILTER_JSON)[0]
+        filename_full = QFileDialog.getOpenFileName(
+            self, self.tr("Import Vehicle Brand Data"), filter=file_filter_label(FILE.FILTER_JSON),
+        )[0]
         if not filename_full:
             return
 
@@ -185,8 +188,8 @@ class VehicleBrandEditor(BaseEditor):
         except (AttributeError, IndexError, KeyError, TypeError,
                 FileNotFoundError, ValueError, OSError):
             logger.error("Failed importing %s", filename_full)
-            msg_text = "Cannot import selected file.<br><br>Invalid vehicle data file."
-            QMessageBox.warning(self, "Error", msg_text)
+            msg_text = self.tr("Cannot import selected file.<br><br>Invalid vehicle data file.")
+            QMessageBox.warning(self, self.tr("Error"), msg_text)
 
     def parse_brand_data(self, vehicles: dict):
         """Parse brand data"""
@@ -203,11 +206,11 @@ class VehicleBrandEditor(BaseEditor):
         brands_db.update(self.brands_temp)
         self.brands_temp = brands_db
         self.refresh_table()
-        QMessageBox.information(self, "Data Imported", "Vehicle brand data imported.")
+        QMessageBox.information(self, self.tr("Data Imported"), self.tr("Vehicle brand data imported."))
 
     def open_replace_dialog(self):
         """Open replace dialog"""
-        selector = {HEADER_BRANDS[1]: 1}
+        selector = {header_label(HEADER_BRANDS[1]): 1}
         _dialog = TableBatchReplace(self, selector, self.table_brands)
         _dialog.open()
 
@@ -244,10 +247,10 @@ class VehicleBrandEditor(BaseEditor):
         """Delete brand entry"""
         selected_rows = {data.row() for data in self.table_brands.selectedIndexes()}
         if not selected_rows:
-            QMessageBox.warning(self, "Error", "No data selected.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No data selected."))
             return
 
-        if not self.confirm_operation(message="<b>Delete selected rows?</b>"):
+        if not self.confirm_operation(message=self.tr("<b>Delete selected rows?</b>")):
             return
 
         for row_index in sorted(selected_rows, reverse=True):
@@ -256,9 +259,9 @@ class VehicleBrandEditor(BaseEditor):
 
     def reset_setting(self):
         """Reset setting"""
-        msg_text = (
-            "Reset <b>brands preset</b> to default?<br><br>"
-            "Changes are only saved after clicking Apply or Save Button."
+        msg_text = self.tr(
+            "Reset <b>brands preset</b> to default?<br><br>Changes are only saved after "
+            "clicking Apply or Save Button."
         )
         if self.confirm_operation(message=msg_text):
             self.brands_temp = copy_setting(cfg.default.brands)

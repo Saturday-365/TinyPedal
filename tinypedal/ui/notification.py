@@ -22,7 +22,7 @@ Notification
 
 from __future__ import annotations
 
-from PySide2.QtCore import Slot
+from PySide2.QtCore import QCoreApplication, Slot
 from PySide2.QtGui import QDesktopServices
 from PySide2.QtWidgets import (
     QMenu,
@@ -167,5 +167,5 @@ class UpdatesNotifyButton(QPushButton):
             self.setVisible(updater.is_manual())
         else:
             # Hide message if no unpdates and not manual checking
-            self.setText(updater.message())
+            self.setText(updater.message(QCoreApplication.translate))
             self.setVisible(updater.is_manual() or updater.is_updates())

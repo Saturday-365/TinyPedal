@@ -56,6 +56,7 @@ from ..formatter import laptime_string_to_seconds
 from ..module_info import ConsumptionData
 from ..userfile.consumption_history import load_consumption_history_file
 from ._common import BaseDialog, UIScaler
+from .i18n import file_filter_label, header_label, option_label, value_label
 
 
 def _set_layout(layout: QLayout, spacing: int = 2, margin: int = 4):
@@ -107,7 +108,7 @@ class FuelCalculator(BaseDialog):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.set_utility_title("Fuel Calculator")
+        self.set_utility_title(self.tr("Fuel Calculator"))
         layout_main = QVBoxLayout()
         self.setLayout(layout_main)
 
@@ -117,7 +118,7 @@ class FuelCalculator(BaseDialog):
         # Panel history
         self.panel_history = HistoryPanel(self)
 
-        self.button_adddata = QPushButton("Add Selected Data")
+        self.button_adddata = QPushButton(self.tr("Add Selected Data"))
         self.button_adddata.clicked.connect(self.add_selected_data)
         self.button_adddata.setFocusPolicy(Qt.NoFocus)
 
@@ -128,15 +129,15 @@ class FuelCalculator(BaseDialog):
         # Panel calculator
         self.panel_calculator = CalculatorPanel(self)
 
-        button_loadlive = QPushButton("Load Live")
+        button_loadlive = QPushButton(self.tr("Load Live"))
         button_loadlive.clicked.connect(self.load_live_data)
         button_loadlive.setFocusPolicy(Qt.NoFocus)
 
-        button_loadfile = QPushButton("Load File")
+        button_loadfile = QPushButton(self.tr("Load File"))
         button_loadfile.clicked.connect(self.load_file_data)
         button_loadfile.setFocusPolicy(Qt.NoFocus)
 
-        self.button_toggle = QPushButton("Hide History")
+        self.button_toggle = QPushButton(self.tr("Hide History"))
         self.button_toggle.setCheckable(True)
         self.button_toggle.setChecked(True)
         self.button_toggle.toggled.connect(self.toggle_history_panel)
@@ -168,8 +169,9 @@ class FuelCalculator(BaseDialog):
         """Load history data from file"""
         filename_full = QFileDialog.getOpenFileName(
             self,
+            self.tr("Open Consumption History"),
             dir=cfg.path.fuel_delta,
-            filter=";;".join((FILE.FILTER_CONSUMPTION, FILE.FILTER_CSV))
+            filter=";;".join(map(file_filter_label, (FILE.FILTER_CONSUMPTION, FILE.FILTER_CSV))),
         )[0]
         if not filename_full:
             return
@@ -182,20 +184,22 @@ class FuelCalculator(BaseDialog):
         )
         self.panel_calculator.fill_in_data(history_data)
         self.panel_history.refresh(history_data)
-        self.status_bar.showMessage(f"File Source: {filename}")
+        self.status_bar.showMessage(self.tr("File Source: {filename}").format(filename=filename))
 
     def load_live_data(self):
         """Load history data from live session"""
         history_data = minfo.history.consumptionDataSet
         self.panel_calculator.fill_in_data(history_data)
         self.panel_history.refresh(history_data)
-        self.status_bar.showMessage(f"Live Source: {api.read.session.combo_name()}")
+        self.status_bar.showMessage(self.tr(
+            "Live Source: {session}"
+        ).format(session=api.read.session.combo_name()))
 
     def add_selected_data(self):
         """Add selected data to calculator"""
         selected_data = self.panel_history.table_history.selectedItems()
         if not selected_data:
-            QMessageBox.warning(self, "Error", "No data selected.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No data selected."))
             return
         self.panel_calculator.add_table_data(selected_data)
 
@@ -203,7 +207,7 @@ class FuelCalculator(BaseDialog):
         """Toggle history data panel"""
         self.panel_history.setHidden(not checked)
         self.button_adddata.setHidden(not checked)
-        self.button_toggle.setText("Hide History" if checked else "Show History")
+        self.button_toggle.setText(self.tr("Hide History") if checked else self.tr("Show History"))
 
         margin = self.layout().contentsMargins()
         width = self.panel_calculator.width() + margin.left() + margin.right()
@@ -226,8 +230,8 @@ class FuelCalculator(BaseDialog):
 
         for option_name in config:
             if option_name.startswith("show_column"):
-                action_name = option_name.replace("show_column_", "").replace("_", " ").title()
-                action = menu.addAction(action_name)
+                action = menu.addAction(option_label(option_name[len("show_column_"):]))
+                action.setData(option_name)
                 action.setCheckable(True)
                 action.setChecked(config[option_name])
 
@@ -235,7 +239,7 @@ class FuelCalculator(BaseDialog):
         if not selected_action:
             return
 
-        selected_name = "show_column_" + selected_action.text().replace(" ", "_").lower()
+        selected_name = selected_action.data()
         if selected_name in config:
             config[selected_name] = not config[selected_name]
             self.panel_history.toggle_column()
@@ -333,14 +337,14 @@ class HistoryPanel(QWidget):
         self.columns = (
             _add_data_column(
                 key="lap",
-                name="Lap",
+                name=header_label("Lap"),
                 width=3,
                 process=(lambda data: f"{data.lapNumber}" if data.lapNumber > 0 else DATA.TEXT_PLACEHOLDER),
                 flags=flag_unselectable,
             ),
             _add_data_column(
                 key="stint",
-                name="Stint",
+                name=header_label("Stint"),
                 width=3,
                 process=(lambda data: f"{data.stintLapNumber}" if data.stintLapNumber > 0 else DATA.TEXT_PLACEHOLDER),
                 flags=flag_unselectable,
@@ -348,7 +352,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="time",
-                name="Time",
+                name=header_label("Time"),
                 width=6,
                 process=(lambda data: calc.sec2laptime_full(data.lapTimeLast)),
                 flags=flag_selectable,
@@ -356,7 +360,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="fuel",
-                name=f"Fuel({self.symbol_fuel})",
+                name=self.tr("Fuel({unit})").format(unit=self.symbol_fuel),
                 width=5,
                 process=(lambda data: f"{self.unit_fuel(data.lastLapUsedFuel):.3f}"),
                 flags=flag_selectable,
@@ -364,7 +368,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="energy",
-                name="NRG(%)",
+                name=header_label("NRG(%)"),
                 width=5,
                 process=(lambda data: f"{data.lastLapUsedEnergy:.3f}"),
                 flags=flag_selectable,
@@ -372,7 +376,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="ratio",
-                name="F/Ratio",
+                name=header_label("F/Ratio"),
                 width=5,
                 process=(lambda data: f"{calc.fuel_to_energy_ratio(data.lastLapUsedFuel, data.lastLapUsedEnergy):.3f}"),
                 flags=flag_unselectable,
@@ -380,7 +384,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="drain",
-                name="Drain(%)",
+                name=header_label("Drain(%)"),
                 width=5,
                 process=(lambda data: f"{data.batteryDrainLast:.3f}"),
                 flags=flag_unselectable,
@@ -388,7 +392,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="regen",
-                name="Regen(%)",
+                name=header_label("Regen(%)"),
                 width=5,
                 process=(lambda data: f"{data.batteryRegenLast:.3f}"),
                 flags=flag_unselectable,
@@ -396,7 +400,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="net",
-                name="B/Net(%)",
+                name=header_label("B/Net(%)"),
                 width=5,
                 process=(lambda data: f"{data.batteryRegenLast - data.batteryDrainLast:+.3f}"),
                 flags=flag_unselectable,
@@ -404,7 +408,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="tyre_wear",
-                name="Tyre F(%)",
+                name=header_label("Tyre F(%)"),
                 width=5,
                 process=(lambda data: f"{max(data.tyreWearFL, data.tyreWearFR):.3f}"),
                 flags=flag_selectable,
@@ -412,7 +416,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="tyre_wear",
-                name="Tyre R(%)",
+                name=header_label("Tyre R(%)"),
                 width=5,
                 process=(lambda data: f"{max(data.tyreWearRL, data.tyreWearRR):.3f}"),
                 flags=flag_selectable,
@@ -420,7 +424,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="brake_wear",
-                name="Pad F(mm)",
+                name=header_label("Pad F(mm)"),
                 width=6,
                 process=(lambda data: f"{max(data.brakeWearFL, data.brakeWearFR):.6f}"),
                 flags=flag_selectable,
@@ -428,7 +432,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="brake_wear",
-                name="Pad R(mm)",
+                name=header_label("Pad R(mm)"),
                 width=6,
                 process=(lambda data: f"{max(data.brakeWearRL, data.brakeWearRR):.6f}"),
                 flags=flag_selectable,
@@ -436,7 +440,7 @@ class HistoryPanel(QWidget):
             ),
             _add_data_column(
                 key="tank",
-                name=f"Tank({self.symbol_fuel})",
+                name=self.tr("Tank({unit})").format(unit=self.symbol_fuel),
                 width=5,
                 process=(lambda data: f"{self.unit_fuel(data.capacityFuel):.3f}"),
                 flags=flag_selectable,
@@ -575,8 +579,8 @@ class CalculatorPanel(QWidget):
 
         # Result tabs
         result_tabs = QTabWidget(self)
-        result_tabs.addTab(panel_result, "Fuel Usage")  # 0
-        result_tabs.addTab(panel_wear, "Wear Rate")  # 1
+        result_tabs.addTab(panel_result, self.tr("Fuel Usage"))  # 0
+        result_tabs.addTab(panel_wear, self.tr("Wear Rate"))  # 1
 
         # Calculator panel
         layout_calculator = QVBoxLayout()
@@ -871,7 +875,7 @@ class InputLapTime(QFrame):
         self.mseconds.setSingleStep(100)
         self.mseconds.valueChanged.connect(parent.update_input)
 
-        layout.addWidget(QLabel("Lap Time:"), 0, 0, 1, 6)
+        layout.addWidget(QLabel(self.tr("Lap Time:")), 0, 0, 1, 6)
 
         layout.addWidget(self.minutes, 1, 0)
         layout.addWidget(QLabel("m"), 1, 1)
@@ -960,12 +964,12 @@ class InputFuel(QFrame):
         self.energy_start.setRange(0, 100)
         self.energy_start.valueChanged.connect(parent.update_input)
 
-        _add_output(0, 0, layout, self.capacity, "Tank Capacity:", parent.symbol_fuel)
-        _add_output(0, 2, layout, self.fuel_used, "Fuel Consumption:", parent.symbol_fuel)
-        _add_output(2, 0, layout, self.fuel_ratio, "Fuel/Energy Ratio:", "")
-        _add_output(2, 2, layout, self.energy_used, "Energy Consumption:", "%")
-        _add_output(4, 0, layout, self.fuel_start, "Starting Fuel:", parent.symbol_fuel)
-        _add_output(4, 2, layout, self.energy_start, "Starting Energy:", "%")
+        _add_output(0, 0, layout, self.capacity, self.tr("Tank Capacity:"), parent.symbol_fuel)
+        _add_output(0, 2, layout, self.fuel_used, self.tr("Fuel Consumption:"), parent.symbol_fuel)
+        _add_output(2, 0, layout, self.fuel_ratio, self.tr("Fuel/Energy Ratio:"), "")
+        _add_output(2, 2, layout, self.energy_used, self.tr("Energy Consumption:"), "%")
+        _add_output(4, 0, layout, self.fuel_start, self.tr("Starting Fuel:"), parent.symbol_fuel)
+        _add_output(4, 2, layout, self.energy_start, self.tr("Starting Energy:"), "%")
 
     def validate_starting_fuel(self, value: float):
         """Validate starting fuel"""
@@ -1008,10 +1012,10 @@ class InputRace(QFrame):
         self.pit_seconds.setAlignment(Qt.AlignRight)
         self.pit_seconds.valueChanged.connect(parent.update_input)
 
-        _add_output(0, 0, layout, self.minutes, "Race Minutes:", "min")
-        _add_output(0, 2, layout, self.laps, "Race Laps:", "lap")
-        _add_output(2, 0, layout, self.formation, "Formation/Rolling:", "lap")
-        _add_output(2, 2, layout, self.pit_seconds, "Average Pit Seconds:", "sec")
+        _add_output(0, 0, layout, self.minutes, self.tr("Race Minutes:"), "min")
+        _add_output(0, 2, layout, self.laps, self.tr("Race Laps:"), "lap")
+        _add_output(2, 0, layout, self.formation, self.tr("Formation/Rolling:"), "lap")
+        _add_output(2, 2, layout, self.pit_seconds, self.tr("Average Pit Seconds:"), "sec")
 
     def disable_race_lap(self, value: int):
         """Disable race laps if race minutes is set"""
@@ -1085,16 +1089,19 @@ class OutputUsage(QFrame):
         self.average_refill.setAlignment(Qt.AlignRight)
         self.average_refill.setReadOnly(True)
 
-        _add_output(0, 0, layout, self.total_needed, f"Total Race {type_name}:", unit_text)
-        _add_output(2, 0, layout, self.pit_stops, "Total Pit Stops:", "pit")
-        _add_output(4, 0, layout, self.total_laps, "Total Race Laps:", "lap")
-        _add_output(6, 0, layout, self.total_minutes, "Total Race Minutes:", "min")
-        _add_output(8, 0, layout, self.stint_laps, "Max Stint Laps:", "lap")
-        _add_output(10, 0, layout, self.stint_minutes, "Max Stint Minutes:", "min")
-        _add_output(12, 0, layout, self.final_laps, "Final Stint Laps:", "lap")
-        _add_output(14, 0, layout, self.end_stint, f"End Stint {type_name}:", unit_text)
-        _add_output(16, 0, layout, self.one_less_stint, "One Less Pit Stop:", unit_text)
-        _add_output(18, 0, layout, self.average_refill, "Average Refilling:", unit_text)
+        usage_name = value_label(type_name)
+        total_label = self.tr("Total Race {usage}:").format(usage=usage_name)
+        stint_label = self.tr("End Stint {usage}:").format(usage=usage_name)
+        _add_output(0, 0, layout, self.total_needed, total_label, unit_text)
+        _add_output(2, 0, layout, self.pit_stops, self.tr("Total Pit Stops:"), "pit")
+        _add_output(4, 0, layout, self.total_laps, self.tr("Total Race Laps:"), "lap")
+        _add_output(6, 0, layout, self.total_minutes, self.tr("Total Race Minutes:"), "min")
+        _add_output(8, 0, layout, self.stint_laps, self.tr("Max Stint Laps:"), "lap")
+        _add_output(10, 0, layout, self.stint_minutes, self.tr("Max Stint Minutes:"), "min")
+        _add_output(12, 0, layout, self.final_laps, self.tr("Final Stint Laps:"), "lap")
+        _add_output(14, 0, layout, self.end_stint, stint_label, unit_text)
+        _add_output(16, 0, layout, self.one_less_stint, self.tr("One Less Pit Stop:"), unit_text)
+        _add_output(18, 0, layout, self.average_refill, self.tr("Average Refilling:"), unit_text)
 
 
 class InputWear(QFrame):
@@ -1154,14 +1161,15 @@ class InputWear(QFrame):
         self.lifespan_stints.setReadOnly(True)
 
         if type_name == "Pad":
-            _add_output(0, 0, layout, self.effective, "Brake Pad Thickness:", "mm")
-            _add_output(0, 2, layout, self.wear_millimeter, "Millimeter Wear Per Lap:", "mm")
-        _add_output(2, 0, layout, self.wear_start, f"Starting {type_name} Life:", "%")
-        _add_output(2, 2, layout, self.lifespan_laps, "Lifespan Laps:", "lap")
-        _add_output(4, 0, layout, self.wear_lap, "Percent Wear Per Lap:", "%")
-        _add_output(4, 2, layout, self.lifespan_minutes, "Lifespan Minutes:", "min")
-        _add_output(6, 0, layout, self.wear_stint, "Percent Wear Per Stint:", "%")
-        _add_output(6, 2, layout, self.lifespan_stints, "Lifespan Stints:", "x")
+            _add_output(0, 0, layout, self.effective, self.tr("Brake Pad Thickness:"), "mm")
+            _add_output(0, 2, layout, self.wear_millimeter, self.tr("Millimeter Wear Per Lap:"), "mm")
+        life_label = self.tr("Starting {part} Life:").format(part=value_label(type_name))
+        _add_output(2, 0, layout, self.wear_start, life_label, "%")
+        _add_output(2, 2, layout, self.lifespan_laps, self.tr("Lifespan Laps:"), "lap")
+        _add_output(4, 0, layout, self.wear_lap, self.tr("Percent Wear Per Lap:"), "%")
+        _add_output(4, 2, layout, self.lifespan_minutes, self.tr("Lifespan Minutes:"), "min")
+        _add_output(6, 0, layout, self.wear_stint, self.tr("Percent Wear Per Stint:"), "%")
+        _add_output(6, 2, layout, self.lifespan_stints, self.tr("Lifespan Stints:"), "x")
 
     def update_thickness(self, value: float):
         """Convert thickness to percent"""

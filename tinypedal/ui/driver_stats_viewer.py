@@ -46,6 +46,7 @@ from ..userfile.driver_stats import (
     validate_stats_json_file,
 )
 from ._common import BaseEditor, CompactButton, NumericTableItem, UIScaler
+from .i18n import header_label
 from .track_map_viewer import TrackMapViewer
 
 
@@ -100,7 +101,7 @@ class DriverStatsViewer(BaseEditor):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.set_utility_title("Driver Stats Viewer")
+        self.set_utility_title(self.tr("Driver Stats Viewer"))
         self.setMinimumSize(UIScaler.size(80), UIScaler.size(30))
         self.resize(UIScaler.size(80), UIScaler.size(50))
 
@@ -117,7 +118,7 @@ class DriverStatsViewer(BaseEditor):
         self.table_stats = QTableWidget(self)
         self.table_stats.setColumnCount(len(self.table_header_key))
         self.table_stats.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.table_stats.setHorizontalHeaderLabels([format_header_key(key) for key in self.table_header_key])
+        self.table_stats.setHorizontalHeaderLabels([header_label(format_header_key(key)) for key in self.table_header_key])
         self.table_stats.verticalHeader().setVisible(False)
         self.table_stats.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.table_stats.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -132,16 +133,16 @@ class DriverStatsViewer(BaseEditor):
         self.refresh_table()
 
         # Button
-        button_delete = CompactButton("Delete")
+        button_delete = CompactButton(self.tr("Delete"))
         button_delete.clicked.connect(self.delete_stats_key)
 
-        button_reload = CompactButton("Reload")
+        button_reload = CompactButton(self.tr("Reload"))
         button_reload.clicked.connect(self.reload_stats)
 
-        button_viewmap = CompactButton("View Map")
+        button_viewmap = CompactButton(self.tr("View Map"))
         button_viewmap.clicked.connect(self.open_trackmap)
 
-        button_close = CompactButton("Close")
+        button_close = CompactButton(self.tr("Close"))
         button_close.clicked.connect(self.close)
 
         # Set layout
@@ -227,14 +228,12 @@ class DriverStatsViewer(BaseEditor):
     def delete_stats_key(self):
         """Delete stats key"""
         if not self.selected_stats_key:
-            QMessageBox.warning(self, "Error", "No data found.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No data found."))
             return
 
-        msg_text = (
-            "Delete all stats from<br>"
-            f"<b>{self.selected_stats_key}</b> ?<br><br>"
-            "This cannot be undone!"
-        )
+        msg_text = self.tr(
+            "Delete all stats from<br><b>{selected_stats_key}</b> ?<br><br>This cannot be undone!"
+        ).format(selected_stats_key=self.selected_stats_key)
         if self.confirm_operation(message=msg_text):
             self.stats_temp.pop(self.selected_stats_key, None)  # remove from dict
             save_stats_json_file(
@@ -247,19 +246,18 @@ class DriverStatsViewer(BaseEditor):
         """Remove vehicle and stats"""
         selected_rows = [data.row() for data in self.table_stats.selectedIndexes()]
         if not selected_rows:
-            QMessageBox.warning(self, "Error", "No data selected.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No data selected."))
             return
 
         track_stats = self.stats_temp.get(self.selected_stats_key, None)
         if not isinstance(track_stats, dict):
-            QMessageBox.warning(self, "Error", "No data found.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No data found."))
             return
 
         selected_vehicle = self.table_stats.item(selected_rows[0], 0).text()
-        msg_text = (
-            f"Remove all stats from <b>{selected_vehicle}</b>?<br><br>"
-            "This cannot be undone!"
-        )
+        msg_text = self.tr(
+            "Remove all stats from <b>{selected_vehicle}</b>?<br><br>This cannot be undone!"
+        ).format(selected_vehicle=selected_vehicle)
         if self.confirm_operation(message=msg_text):
             track_stats.pop(selected_vehicle, None)  # remove from dict
             save_stats_json_file(
@@ -274,12 +272,12 @@ class DriverStatsViewer(BaseEditor):
         selected_column = self.table_header_key[column]
         best_laptime = self.table_stats.item(row, column).text()
         if best_laptime == DATA.TEXT_NOLAPTIME:
-            QMessageBox.warning(self, "Error", "No lap time found.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No lap time found."))
             return
-        msg_text = (
-            f"Reset <b>{best_laptime}</b> lap time for <b>{selected_vehicle}</b>?<br><br>"
-            "This cannot be undone!"
-        )
+        msg_text = self.tr(
+            "Reset <b>{best_laptime}</b> lap time for <b>{selected_vehicle}</b>?<br><br>This "
+            "cannot be undone!"
+        ).format(best_laptime=best_laptime, selected_vehicle=selected_vehicle)
         if self.confirm_operation(message=msg_text):
             self.stats_temp[self.selected_stats_key][selected_vehicle][selected_column] = DATA.MAX_SECONDS
             save_stats_json_file(
@@ -298,9 +296,9 @@ class DriverStatsViewer(BaseEditor):
 
         menu = QMenu()  # no parent for temp menu
         if item_column == 0:
-            menu.addAction("Remove Vehicle")
+            menu.addAction(self.tr("Remove Vehicle")).setData("remove_vehicle")
         elif DriverStats.is_lap_time(self.table_header_key[item_column]):
-            menu.addAction("Reset Lap Time")
+            menu.addAction(self.tr("Reset Lap Time")).setData("reset_lap_time")
         else:
             return
 
@@ -312,10 +310,10 @@ class DriverStatsViewer(BaseEditor):
         if not selected_action:
             return
 
-        action = selected_action.text()
-        if action == "Remove Vehicle":
+        action = selected_action.data()
+        if action == "remove_vehicle":
             self.remove_vehicle()
-        elif action == "Reset Lap Time":
+        elif action == "reset_lap_time":
             self.reset_laptime(item_row, item_column)
 
     def open_trackmap(self):

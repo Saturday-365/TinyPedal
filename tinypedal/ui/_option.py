@@ -39,7 +39,7 @@ from PySide2.QtWidgets import (
 )
 
 from .. import paths
-from ..constant import FILE
+from ..constant import FILE, qfile_filter
 from ..validator import image_exists, is_clock_format, is_hex_color, is_string_number
 
 
@@ -209,15 +209,15 @@ class DropDownListEdit(BaseComboBox):
         return self.currentText()
 
 
-class LanguageEdit(BaseComboBox):
-    """Language selector that saves the locale code."""
+class ValueDropDownEdit(BaseComboBox):
+    """Choice editor that stores values independently of their displayed labels."""
 
     def validate(self):
-        """Return the language code instead of the item label."""
+        """Return the stored value instead of the item label."""
         return self.currentData()
 
     def reset_to_default(self):
-        """Restore the default language by code."""
+        """Restore the default stored value."""
         self.setCurrentIndex(self.findData(self.default()))
 
 
@@ -255,7 +255,8 @@ class ColorEdit(BaseLineEdit):
         # Open color selector dialog
         color_get = color_dialog.getColor(
             initial=QColor(self.init_value),
-            options=QColorDialog.ShowAlphaChannel
+            title=self.tr("Select Color"),
+            options=QColorDialog.ShowAlphaChannel,
         )
         if color_get.isValid():
             # Add new color to color history
@@ -307,7 +308,7 @@ class FilePathEdit(BaseLineEdit):
 
     def open_dialog_path(self):
         """Open file path dialog"""
-        path_selected = QFileDialog.getExistingDirectory(self, dir=self.init_value)
+        path_selected = QFileDialog.getExistingDirectory(self, self.tr("Select Directory"), dir=self.init_value)
         if os.path.exists(path_selected):
             # Convert to relative path if in APP root folder
             path_valid = paths.relative_path(path_selected)
@@ -337,7 +338,10 @@ class ImagePathEdit(BaseLineEdit):
 
     def open_dialog_image(self):
         """Open image file path dialog"""
-        path_selected = QFileDialog.getOpenFileName(self, dir=self.init_value, filter=FILE.FILTER_PNG)[0]
+        file_filter = qfile_filter(FILE.EXT_PNG, self.tr("PNG image"))
+        path_selected = QFileDialog.getOpenFileName(
+            self, self.tr("Open Image"), dir=self.init_value, filter=file_filter,
+        )[0]
         if image_exists(path_selected):
             self.setText(path_selected)
             self.init_value = path_selected

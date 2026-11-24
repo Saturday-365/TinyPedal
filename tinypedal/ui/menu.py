@@ -33,7 +33,7 @@ from .config import FontConfig, UserConfig
 from .driver_stats_viewer import DriverStatsViewer
 from .fuel_calculator import FuelCalculator
 from .heatmap_editor import HeatmapEditor
-from .i18n import option_label
+from .i18n import option_label, value_label
 from .log_info import LogInfo
 from .track_info_editor import TrackInfoEditor
 from .track_map_viewer import TrackMapViewer
@@ -487,7 +487,7 @@ class APIMenu(QMenu):
         """Refresh menu"""
         selected_api_name = cfg.selected_api
         for action in self.actions_api.actions():
-            if selected_api_name == action.text():
+            if selected_api_name == action.data():
                 action.setChecked(True)
                 break
         self.api_selection.setChecked(cfg.telemetry["enable_api_selection_from_preset"])
@@ -539,7 +539,8 @@ class APIMenu(QMenu):
         actions_api = QActionGroup(self)
 
         for api_name in api.available:
-            option = self.addAction(api_name)
+            option = self.addAction(value_label(api_name))
+            option.setData(api_name)
             option.setCheckable(True)
             option.triggered.connect(lambda checked=True, name=api_name: self.__toggle_option(checked, name))
             actions_api.addAction(option)

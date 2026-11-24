@@ -53,3 +53,19 @@ def module_label(name: str) -> str:
     """Translate a widget or module key for display."""
     translated = QCoreApplication.translate("ModuleName", name)
     return format_module_name(name) if translated == name else translated
+
+
+def value_label(value: str) -> str:
+    """Translate a built-in choice value for display."""
+    return QCoreApplication.translate("ConfigValue", value)
+
+
+def header_label(name: str) -> str:
+    """Translate a column heading without changing its data identifier."""
+    return QCoreApplication.translate("TableHeader", name)
+
+
+def file_filter_label(file_filter: str) -> str:
+    """Translate a file filter description and keep its wildcard pattern."""
+    description, pattern = file_filter.rsplit(" (", 1)
+    return f'{QCoreApplication.translate("FileFilter", description)} ({pattern}'

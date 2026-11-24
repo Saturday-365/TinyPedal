@@ -251,6 +251,8 @@ class PresetList(QWidget):
 
     def confirm_operation(self, title: str = "Confirm", message: str = "") -> bool:
         """Confirm operation"""
+        if title == "Confirm":
+            title = self.tr("Confirm")
         confirm = QMessageBox.question(
             self, title, message,
             buttons=QMessageBox.Yes | QMessageBox.No,

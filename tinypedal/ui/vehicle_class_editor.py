@@ -37,6 +37,7 @@ from ..constant import CONFIG, DATA
 from ..formatter import random_color_class
 from ..userfile.json_setting import copy_setting
 from ._common import QVAL_COLOR, BaseEditor, CompactButton, UIScaler
+from .i18n import header_label
 from ._option import ColorEdit
 
 HEADER_CLASSES = "Class name","Alias name","Color"
@@ -47,7 +48,7 @@ class VehicleClassEditor(BaseEditor):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.set_utility_title("Vehicle Class Editor")
+        self.set_utility_title(self.tr("Vehicle Class Editor"))
         self.setMinimumSize(UIScaler.size(30), UIScaler.size(30))
 
         self.classes_temp = copy_setting(cfg.user.classes)
@@ -55,7 +56,7 @@ class VehicleClassEditor(BaseEditor):
         # Set table
         self.table_classes = QTableWidget(self)
         self.table_classes.setColumnCount(len(HEADER_CLASSES))
-        self.table_classes.setHorizontalHeaderLabels(HEADER_CLASSES)
+        self.table_classes.setHorizontalHeaderLabels([header_label(name) for name in HEADER_CLASSES])
         self.table_classes.verticalHeader().setVisible(False)
         self.table_classes.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.table_classes.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -79,25 +80,25 @@ class VehicleClassEditor(BaseEditor):
 
     def set_layout_button(self):
         """Set button layout"""
-        button_add = CompactButton("Add")
+        button_add = CompactButton(self.tr("Add"))
         button_add.clicked.connect(self.add_class)
 
-        button_sort = CompactButton("Sort")
+        button_sort = CompactButton(self.tr("Sort"))
         button_sort.clicked.connect(self.sort_class)
 
-        button_delete = CompactButton("Delete")
+        button_delete = CompactButton(self.tr("Delete"))
         button_delete.clicked.connect(self.delete_class)
 
-        button_reset = CompactButton("Reset")
+        button_reset = CompactButton(self.tr("Reset"))
         button_reset.clicked.connect(self.reset_setting)
 
-        button_apply = CompactButton("Apply")
+        button_apply = CompactButton(self.tr("Apply"))
         button_apply.clicked.connect(self.applying)
 
-        button_save = CompactButton("Save")
+        button_save = CompactButton(self.tr("Save"))
         button_save.clicked.connect(self.saving)
 
-        button_close = CompactButton("Close")
+        button_close = CompactButton(self.tr("Close"))
         button_close.clicked.connect(self.close)
 
         layout_button = QHBoxLayout()
@@ -162,10 +163,10 @@ class VehicleClassEditor(BaseEditor):
         """Delete class entry"""
         selected_rows = {data.row() for data in self.table_classes.selectedIndexes()}
         if not selected_rows:
-            QMessageBox.warning(self, "Error", "No data selected.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("No data selected."))
             return
 
-        if not self.confirm_operation(message="<b>Delete selected rows?</b>"):
+        if not self.confirm_operation(message=self.tr("<b>Delete selected rows?</b>")):
             return
 
         for row_index in sorted(selected_rows, reverse=True):
@@ -174,9 +175,9 @@ class VehicleClassEditor(BaseEditor):
 
     def reset_setting(self):
         """Reset setting"""
-        msg_text = (
-            "Reset <b>classes preset</b> to default?<br><br>"
-            "Changes are only saved after clicking Apply or Save Button."
+        msg_text = self.tr(
+            "Reset <b>classes preset</b> to default?<br><br>Changes are only saved after "
+            "clicking Apply or Save Button."
         )
         if self.confirm_operation(message=msg_text):
             self.classes_temp = copy_setting(cfg.default.classes)

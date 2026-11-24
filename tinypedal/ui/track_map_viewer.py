@@ -22,7 +22,7 @@ Track map viewer
 
 import os
 
-from PySide2.QtCore import QPoint, QPointF, QRect, Qt
+from PySide2.QtCore import QCoreApplication, QPoint, QPointF, QRect, Qt
 from PySide2.QtGui import QPainter, QPainterPath, QPen
 from PySide2.QtWidgets import (
     QAbstractSpinBox,
@@ -46,6 +46,7 @@ from ..constant import CONFIG, FILE
 from ..userfile.track_map import load_track_map_file
 from ._common import BaseDialog, CompactButton, UIScaler
 from .config import UserConfig
+from .i18n import file_filter_label, option_label
 
 
 class TrackMapViewer(BaseDialog):
@@ -53,7 +54,7 @@ class TrackMapViewer(BaseDialog):
 
     def __init__(self, parent, filepath: str = "", filename: str = ""):
         super().__init__(parent)
-        self.set_utility_title("Track Map Viewer")
+        self.set_utility_title(self.tr("Track Map Viewer"))
 
         # Set panel
         self.trackmap_panel = self.set_layout_trackmap()
@@ -208,7 +209,7 @@ class MapView(QWidget):
         # Outer controls
         self.edit_filename = QLineEdit()
         self.edit_filename.setReadOnly(True)
-        self.edit_filename.setPlaceholderText("Track Map Name")
+        self.edit_filename.setPlaceholderText(self.tr("Track Map Name"))
 
         self.spinbox_map_scale = QDoubleSpinBox()
         self.spinbox_map_scale.setRange(0.01, 10)
@@ -242,10 +243,10 @@ class MapView(QWidget):
 
     def set_button_layout(self):
         """Set button layout"""
-        button_load = CompactButton("Load Map")
+        button_load = CompactButton(self.tr("Load Map"))
         button_load.clicked.connect(self.open_trackmap)
 
-        button_config = CompactButton("Config")
+        button_config = CompactButton(self.tr("Config"))
         button_config.clicked.connect(self.open_config_dialog)
 
         layout_button = QHBoxLayout()
@@ -257,12 +258,12 @@ class MapView(QWidget):
     def set_control_layout(self):
         """Set control layout"""
         layout_control = QHBoxLayout()
-        layout_control.addWidget(QLabel("Zoom:"))
+        layout_control.addWidget(QLabel(self.tr("Zoom:")))
         layout_control.addWidget(self.spinbox_map_scale)
         layout_control.addStretch(1)
-        layout_control.addWidget(QLabel("Position:"))
+        layout_control.addWidget(QLabel(self.tr("Position:")))
         layout_control.addWidget(self.spinbox_pos_dist)
-        layout_control.addWidget(QLabel("Nodes:"))
+        layout_control.addWidget(QLabel(self.tr("Nodes:")))
         layout_control.addWidget(self.spinbox_nodes)
         return layout_control
 
@@ -329,8 +330,8 @@ class MapView(QWidget):
     def set_context_menu(self):
         """Set context menu"""
         menu = QMenu()  # temp menu, no parent
-        menu.addAction("Reset Map View")
-        menu.addAction("Reset Map Zoom")
+        menu.addAction(self.tr("Reset Map View")).setData("reset_view")
+        menu.addAction(self.tr("Reset Map Zoom")).setData("reset_zoom")
         menu_items = (
             None,
             "show_dark_background",
@@ -351,7 +352,8 @@ class MapView(QWidget):
             if key is None:
                 menu.addSeparator()
                 continue
-            option = menu.addAction(key.replace("show_", "").replace("_", " ").title())
+            option = menu.addAction(option_label(key[len("show_"):]))
+            option.setData(key)
             option.setCheckable(True)
             option.setChecked(self.ecfg[key])
         return menu
@@ -361,15 +363,15 @@ class MapView(QWidget):
         menu = self.set_context_menu()
         action = menu.exec_(self.mapToGlobal(position))
         if action:
-            action_text = action.text()
-            if action_text == "Reset Map View":
+            # 菜单项携带原配置键，避免通过译文还原操作。
+            key = action.data()
+            if key == "reset_view":
                 self.reset_map_view()
                 self.update()
-            elif action_text == "Reset Map Zoom":
+            elif key == "reset_zoom":
                 self.spinbox_map_scale.setValue(1)
             else:
-                name = "show_" + action_text.replace(" ", "_").lower()
-                self.ecfg[name] = not self.ecfg[name]
+                self.ecfg[key] = not self.ecfg[key]
                 cfg.save(config_type=CONFIG.TYPE_CONFIG)
                 self.update()
 
@@ -388,7 +390,10 @@ class MapView(QWidget):
 
     def open_trackmap(self):
         """Open trackmap"""
-        filename_full = QFileDialog.getOpenFileName(self, dir=cfg.path.track_map, filter=FILE.FILTER_SVG)[0]
+        filename_full = QFileDialog.getOpenFileName(
+            self, self.tr("Open Track Map"), dir=cfg.path.track_map,
+            filter=file_filter_label(FILE.FILTER_SVG),
+        )[0]
         if not filename_full:
             return
 
@@ -399,8 +404,10 @@ class MapView(QWidget):
     def load_trackmap(self, filepath: str, filename: str):
         """Load trackmap"""
         if not os.path.exists(f"{filepath}{filename}{FILE.EXT_SVG}"):
-            msg_text = f"Cannot find track map for<br><b>{filename}</b><br>"
-            QMessageBox.warning(self, "Error", msg_text)
+            msg_text = self.tr(
+                "Cannot find track map for<br><b>{filename}</b><br>"
+            ).format(filename=filename)
+            QMessageBox.warning(self, self.tr("Error"), msg_text)
             return
 
         self.raw_coords, self.raw_dists, sector_index = load_track_map_file(
@@ -417,12 +424,12 @@ class MapView(QWidget):
             self.map_length = 0
             self.map_nodes = 0
             self.map_filename = ""
-            msg_text = (
+            msg_text = self.tr(
                 "Unable to load track map file from<br>"
-                f"<b>{filepath}{filename}{FILE.EXT_SVG}</b><br><br>"
-                "Only support SVG file that generated with TinyPedal."
-            )
-            QMessageBox.warning(self, "Error", msg_text)
+                "<b>{filepath}{filename}{EXT_SVG}</b><br><br>Only support SVG file that "
+                "generated with TinyPedal."
+            ).format(filepath=filepath, filename=filename, EXT_SVG=FILE.EXT_SVG)
+            QMessageBox.warning(self, self.tr("Error"), msg_text)
 
         self.reset_control()
         self.update()
@@ -691,7 +698,9 @@ class MapView(QWidget):
         if self.ecfg["show_map_info"]:
             painter.drawText(
                 self.rect_info, Qt.AlignRight,
-                f"{self.map_length:.3f}m ({self.map_nodes} nodes)"
+                self.tr("{length:.3f}m ({nodes} nodes)").format(
+                    length=self.map_length, nodes=self.map_nodes,
+                )
             )
 
     def draw_curve_info(
@@ -700,11 +709,13 @@ class MapView(QWidget):
         if self.ecfg["show_curve_info"]:
             painter.drawText(
                 self.rect_info, Qt.AlignLeft,
-                (
-                    f"Curve: {curve_length:.3f}m ({length_desc})\n"
-                    f"Radius: {arc_radius:.3f}m ({curve_desc})\n"
-                    f"Angle: {arc_angle:.3f}°"
-                    #f"Curvature: {calc.curvature(arc_radius):.6f}"
+                self.tr(
+                    "Curve: {length:.3f}m ({section})\n"
+                    "Radius: {radius:.3f}m ({curve})\nAngle: {angle:.3f}°"
+                ).format(
+                    length=curve_length, section=QCoreApplication.translate("TrackMapGrade", length_desc),
+                    radius=arc_radius,
+                    curve=curve_desc, angle=arc_angle,
                 )
             )
 
@@ -713,10 +724,9 @@ class MapView(QWidget):
         if self.ecfg["show_slope_info"]:
             painter.drawText(
                 self.rect_info, Qt.AlignLeft | Qt.AlignBottom,
-                (
-                    f"Slope: {slope_percent:.3%} ({slope_desc})\n"
-                    f"Angle: {slope_angle:.3f}°\n"
-                    f"Delta: {slope_delta:.3f}m"
+                self.tr("Slope: {slope:.3%} ({direction})\nAngle: {angle:.3f}°\nDelta: {height:.3f}m").format(
+                    slope=slope_percent, direction=QCoreApplication.translate("TrackMapGrade", slope_desc),
+                    angle=slope_angle, height=slope_delta,
                 )
             )
 
@@ -726,8 +736,10 @@ class MapView(QWidget):
             painter.drawText(
                 self.rect_info, Qt.AlignRight | Qt.AlignBottom,
                 (
-                    f"{pos_dist:.3f}m (node {self.map_seek_index + 1})\n"
-                    f"{pos_x:.3f}m, {pos_y:.3f}m, {pos_z:.3f}m"
+                    self.tr("{distance:.3f}m (node {node})").format(
+                        distance=pos_dist, node=self.map_seek_index + 1,
+                    )
+                    + f"\n{pos_x:.3f}m, {pos_y:.3f}m, {pos_z:.3f}m"
                 )
             )
 
@@ -772,10 +784,13 @@ def calc_section_height_delta(
 def curve_description(arc_radius: float, turn_direct: int, curve_grade: tuple) -> str:
     """Curve description"""
     if arc_radius >= curve_grade[-1][0]:
-        return curve_grade[-1][1]
+        return QCoreApplication.translate("TrackMapGrade", curve_grade[-1][1])
     if turn_direct > 0:
         direct_desc = "Right"
     else:
         direct_desc = "Left"
     curve_desc = calc.select_grade(curve_grade, arc_radius)
-    return f"{direct_desc} {curve_desc}"
+    return QCoreApplication.translate("MapView", "{direction} {grade}").format(
+        direction=QCoreApplication.translate("TrackMapGrade", direct_desc),
+        grade=QCoreApplication.translate("TrackMapGrade", curve_desc),
+    )

@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
+from typing import Callable
 
 from . import app_signal, version
 from .async_request import get_response, set_header_get
@@ -131,13 +132,13 @@ class UpdateChecker:
         # Output log
         logger.info("UPDATES: %s", self.message())
 
-    def message(self) -> str:
-        """Get message"""
+    def message(self, translate: Callable[[str, str], str] = lambda _context, text: text) -> str:
+        """Return the update status, optionally translated for display."""
         if self._last_checked_version == DATA.VERSION_NA:
-            return "Unable To Find Updates"
+            return translate("UpdateChecker", "Unable To Find Updates")
         if not self._update_available:
-            return "No Updates Available"
-        return "New Updates: v{}.{}.{} ({}-{}-{})".format(
+            return translate("UpdateChecker", "No Updates Available")
+        return translate("UpdateChecker", "New Updates: v{}.{}.{} ({}-{}-{})").format(
             *self._last_checked_version,
             *self._last_checked_date,
         )

@@ -25,7 +25,7 @@ from __future__ import annotations
 import re
 from typing import Callable, ClassVar
 
-from PySide2.QtCore import QRegularExpression, Qt
+from PySide2.QtCore import QCoreApplication, QRegularExpression, Qt
 from PySide2.QtGui import (
     QDoubleValidator,
     QIntValidator,
@@ -53,6 +53,7 @@ from PySide2.QtWidgets import (
 from ..constant import APP
 from ..validator import is_string_number
 from ._style import UIScaler
+from .i18n import option_label
 
 # Validator
 QVAL_INTEGER = QIntValidator(-999999, 999999)
@@ -108,11 +109,11 @@ class DialogSingletonError:
         """Error for qdialog"""
         if not self._show_error:
             return
-        msg_text = (
-            f"Already opened <b>{self._dialog_type.title()} dialog</b>."
-            "<br><br>Please close previous dialog first."
-        )
-        QMessageBox.warning(parent, "Error", msg_text)
+        msg_text = QCoreApplication.translate(
+            "DialogSingletonError",
+            "Already opened <b>{dialog} dialog</b>.<br><br>Please close previous dialog first.",
+        ).format(dialog=option_label(self._dialog_type))
+        QMessageBox.warning(parent, QCoreApplication.translate("DialogSingletonError", "Error"), msg_text)
 
     def open(self, parent=None):
         self._message(parent)
@@ -161,6 +162,8 @@ class BaseDialog(QDialog):
 
     def confirm_operation(self, title: str = "Confirm", message: str = "") -> bool:
         """Confirm operation"""
+        if title == "Confirm":
+            title = QCoreApplication.translate("BaseDialog", "Confirm")
         confirm = QMessageBox.question(
             self, title, message,
             buttons=QMessageBox.Yes | QMessageBox.No,
@@ -185,7 +188,9 @@ class BaseEditor(BaseDialog):
             return True
 
         confirm = QMessageBox.question(
-            self, "Confirm", "<b>Save changes before continue?</b>",
+            self,
+            QCoreApplication.translate("BaseEditor", "Confirm"),
+            QCoreApplication.translate("BaseEditor", "<b>Save changes before continue?</b>"),
             buttons=QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
 
         if confirm == QMessageBox.Save:
@@ -263,14 +268,14 @@ class BatchOffset(BaseDialog):
 
     def __init__(self, parent, offset_func: Callable):
         super().__init__(parent)
-        self.setWindowTitle("Batch Offset")
+        self.setWindowTitle(self.tr("Batch Offset"))
         self.decimals = 0
         self.value_range = 0, 1
         self.offset_func = offset_func
         self.edit_offset = QDoubleSpinBox()
         self.last_offset = QLabel("0")
-        self.last_label = QLabel("Last Offset:")
-        self.checkbox_scale = QCheckBox("Scale Mode")
+        self.last_label = QLabel(self.tr("Last Offset:"))
+        self.checkbox_scale = QCheckBox(self.tr("Scale Mode"))
 
     def config(self, decimals: int, step: float, min_range: int, max_range: int):
         """Config offset"""
@@ -320,11 +325,11 @@ class BatchOffset(BaseDialog):
         if checked:
             self.edit_offset.setRange(0, 100)
             self.edit_offset.setDecimals(6)
-            self.last_label.setText("Last Scale:")
+            self.last_label.setText(self.tr("Last Scale:"))
         else:
             self.edit_offset.setRange(*self.value_range)
             self.edit_offset.setDecimals(self.decimals)
-            self.last_label.setText("Last Offset:")
+            self.last_label.setText(self.tr("Last Offset:"))
 
     def applying(self):
         """Apply offset"""
@@ -348,7 +353,7 @@ class TableBatchReplace(BaseDialog):
         super().__init__(parent)
         self.table_selector = table_selector
         self.table_data = table_data
-        self.setWindowTitle("Batch Replace")
+        self.setWindowTitle(self.tr("Batch Replace"))
 
         # Label & combobox
         self.search_selector = QComboBox()
@@ -362,16 +367,16 @@ class TableBatchReplace(BaseDialog):
 
         self.replace_entry = QLineEdit()
 
-        self.checkbox_casematch = QCheckBox("Match Case")
+        self.checkbox_casematch = QCheckBox(self.tr("Match Case"))
         self.checkbox_casematch.setChecked(False)
-        self.checkbox_exactmatch = QCheckBox("Match Whole Word")
+        self.checkbox_exactmatch = QCheckBox(self.tr("Match Whole Word"))
         self.checkbox_exactmatch.setChecked(False)
 
         layout_option = QGridLayout()
         layout_option.setAlignment(Qt.AlignTop)
-        layout_option.addWidget(QLabel("Column:"), 0, 0)
-        layout_option.addWidget(QLabel("Find:"), 1, 0)
-        layout_option.addWidget(QLabel("Replace:"), 2, 0)
+        layout_option.addWidget(QLabel(self.tr("Column:")), 0, 0)
+        layout_option.addWidget(QLabel(self.tr("Find:")), 1, 0)
+        layout_option.addWidget(QLabel(self.tr("Replace:")), 2, 0)
         layout_option.addWidget(self.column_selector, 0, 1)
         layout_option.addWidget(self.search_selector, 1, 1)
         layout_option.addWidget(self.replace_entry, 2, 1)
@@ -379,7 +384,7 @@ class TableBatchReplace(BaseDialog):
         layout_option.addWidget(self.checkbox_casematch, 4, 1)
 
         # Button
-        button_replace = QPushButton("Replace")
+        button_replace = QPushButton(self.tr("Replace"))
         button_replace.clicked.connect(self.replacing)
 
         button_close = QDialogButtonBox(QDialogButtonBox.Close)
@@ -412,7 +417,7 @@ class TableBatchReplace(BaseDialog):
     def replacing(self):
         """Replace"""
         if not self.search_selector.currentText():
-            QMessageBox.warning(self, "Error", "Invalid name.")
+            QMessageBox.warning(self, self.tr("Error"), self.tr("Invalid name."))
             return
 
         column_index = self.table_selector[self.column_selector.currentText()]

@@ -47,6 +47,7 @@ from .. import api, app_signal, cfg, mctrl, minfo, overlay_signal, paths, realti
 from ..constant import FILE
 from ..userfile.track_notes import COLUMN_PACENOTE
 from ._common import CompactButton, UIScaler
+from .i18n import file_filter_label
 
 logger = logging.getLogger(__name__)
 
@@ -343,7 +344,9 @@ class PaceNotesControl(QWidget):
     def set_notes_path(self):
         """Set pace notes file path"""
         filepath = self.mcfg["pace_notes_file_name"]
-        filename_full = QFileDialog.getOpenFileName(self, dir=filepath, filter=FILE.FILTER_TPPN)[0]
+        filename_full = QFileDialog.getOpenFileName(
+            self, self.tr("Open Pace Notes"), dir=filepath, filter=file_filter_label(FILE.FILTER_TPPN),
+        )[0]
         if not filename_full:
             return
         self.file_selector.setText(filename_full)
@@ -354,7 +357,7 @@ class PaceNotesControl(QWidget):
     def set_sound_path(self):
         """Set sounds folder path"""
         filepath = self.mcfg["pace_notes_sound_path"]
-        filename_full = QFileDialog.getExistingDirectory(self, dir=filepath)
+        filename_full = QFileDialog.getExistingDirectory(self, self.tr("Select Sound Folder"), dir=filepath)
         if not filename_full:
             return
         filename_full = paths.relative_path(filename_full)
