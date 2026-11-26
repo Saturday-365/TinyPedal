@@ -25,15 +25,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from PySide2.QtCore import QBasicTimer, Qt, Slot
+from PySide2.QtCore import QBasicTimer, QCoreApplication, Qt, Slot
 from PySide2.QtGui import QFont, QFontMetrics, QPalette, QPixmap
 from PySide2.QtWidgets import QGridLayout, QLayout, QMenu, QWidget
 
 from .. import app_signal, overlay_signal, realtime_state
 from ..configuration import Configuration
 from ..constant import APP
-from ..formatter import format_module_name
 from ..regex_pattern import FONT_WEIGHT_MAP
+from ..ui.i18n import module_label
 from ._common import FontMetrics, MousePosition
 from ._painter import RawImage, RawText
 
@@ -210,36 +210,36 @@ class Base(QWidget):
         """Widget context menu"""
         menu = QMenu()
 
-        show_name = menu.addAction(format_module_name(self.widget_name))
+        show_name = menu.addAction(module_label(self.widget_name))
         show_name_font = show_name.font()
         show_name_font.setBold(True)
         show_name.setFont(show_name_font)
         menu.addSeparator()
 
-        menu.addAction("Config")
+        config_action = menu.addAction(QCoreApplication.translate("WidgetContextMenu", "Config"))
         menu.addSeparator()
-        menu.addAction("Center Horizontally")
-        menu.addAction("Center Vertically")
+        center_x_action = menu.addAction(QCoreApplication.translate("WidgetContextMenu", "Center Horizontally"))
+        center_y_action = menu.addAction(QCoreApplication.translate("WidgetContextMenu", "Center Vertically"))
         menu.addSeparator()
-        menu.addAction("Reload")
-        menu.addAction("Disable")
+        reload_action = menu.addAction(QCoreApplication.translate("WidgetContextMenu", "Reload"))
+        disable_action = menu.addAction(QCoreApplication.translate("WidgetContextMenu", "Disable"))
 
         selected_action = menu.exec_(event.globalPos())
         if not selected_action:
             return
 
-        action = selected_action.text()
-        if action == "Center Horizontally":
+        # 按动作对象执行命令，避免译名影响右键操作。
+        if selected_action == center_x_action:
             self.move((self.screen().geometry().width() - self.width()) // 2, self.y())
             self.__save_position()
-        elif action == "Center Vertically":
+        elif selected_action == center_y_action:
             self.move(self.x(), (self.screen().geometry().height() - self.height()) // 2)
             self.__save_position()
-        elif action == "Config":
+        elif selected_action == config_action:
             config_widget(self.widget_name)
-        elif action == "Reload":
+        elif selected_action == reload_action:
             reload_widget(self.widget_name)
-        elif action == "Disable":
+        elif selected_action == disable_action:
             disable_widget(self.widget_name)
 
     def closeEvent(self, event):

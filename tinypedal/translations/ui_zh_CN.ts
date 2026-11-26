@@ -2412,6 +2412,29 @@ Delta: {height:.3f}m</source>
         </message>
     </context>
     <context>
+        <name>WidgetContextMenu</name>
+        <message>
+            <source>Config</source>
+            <translation>设置</translation>
+        </message>
+        <message>
+            <source>Center Horizontally</source>
+            <translation>水平居中</translation>
+        </message>
+        <message>
+            <source>Center Vertically</source>
+            <translation>垂直居中</translation>
+        </message>
+        <message>
+            <source>Reload</source>
+            <translation>重新加载</translation>
+        </message>
+        <message>
+            <source>Disable</source>
+            <translation>禁用</translation>
+        </message>
+    </context>
+    <context>
         <name>WindowMenu</name>
         <message>
             <source>Show at Startup</source>

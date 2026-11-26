@@ -5685,7 +5685,7 @@
         </message>
         <message>
             <source>friction_circle</source>
-            <translation>摩擦圆</translation>
+            <translation>G 值圆图</translation>
         </message>
         <message>
             <source>front_arb</source>
@@ -6181,7 +6181,7 @@
         </message>
         <message>
             <source>lift_and_coast_led</source>
-            <translation>收油滑行指示灯</translation>
+            <translation>车轮状态指示灯</translation>
         </message>
         <message>
             <source>lift_and_coast_multiplier_critical</source>
@@ -11252,7 +11252,7 @@
         </message>
         <message>
             <source>friction_circle</source>
-            <translation>摩擦圆</translation>
+            <translation>G 值圆图</translation>
         </message>
         <message>
             <source>fuel</source>
@@ -11284,7 +11284,7 @@
         </message>
         <message>
             <source>lift_and_coast_led</source>
-            <translation>收油滑行指示灯</translation>
+            <translation>车轮状态指示灯</translation>
         </message>
         <message>
             <source>module_delta</source>

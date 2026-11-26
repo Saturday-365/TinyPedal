@@ -12,7 +12,7 @@ With the Qt for Python tools installed, run these commands from the repository
 root to refresh the extracted strings and rebuild the Simplified Chinese catalogs.
 
 ```sh
-pyside6-lupdate -extensions py -locations none tinypedal/ui tinypedal/update.py -ts tinypedal/translations/ui_zh_CN.ts
+pyside6-lupdate -extensions py -locations none tinypedal/ui tinypedal/update.py tinypedal/widget/_base.py -ts tinypedal/translations/ui_zh_CN.ts
 pyside6-lrelease tinypedal/translations/ui_zh_CN.ts tinypedal/translations/labels_zh_CN.ts
 ```
 
